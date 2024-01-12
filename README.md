@@ -8,6 +8,8 @@ The process to contributing repo is very simple.
 - You will not be able to merge the PR. It will need my approval.
 - Once a PR is made shoot me a DM and I will review it and comment or merge your changes if all looks good.
 
+## Installation
+
 ## Strategies How to
 Click below on each strategies to get an explanation of how they work.
 - Base Order management Algo.
