@@ -18,7 +18,7 @@ Click below on each strategies to get an explanation of how they work.
 - Nadaraya Watson - RSI & TO Signals & Camarilla Pivots
 - Blt Trigger Lines Crossover
 
-## Disclaimera
+## Disclaimers
 - I have ZERO Knowledge about trading , but i know damn well how to implement an algorithm ...
 - Please Please try it in SIM or playback and be comfortable with settings .. the strategy templates are not mine , they have been tested by some discord users.. and compiled .
 - THIS IS NOT A GET RICH QUICK SCHEME .. SO DONT TREAT IT LIKE THAT.
