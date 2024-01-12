@@ -1,4 +1,4 @@
-# This READNE is still a work in progress.
+# This README is still a work in progress.
 # ArchReactor - Strategies
 Welcome to Strategies and indicators git hub. This is developed and maintained by archReactor. Its open for all to see and contribute. So that we can grow this github with custom strategies for everyone to use. 
 
