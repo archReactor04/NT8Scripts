@@ -157,14 +157,16 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				if (TradeOnConfirmationCandle == true) {
 					 if ((NadarayaWatsonEnvelopeWithATRNonRepaint1.Signal[1] == 1 || NadarayaWatsonEnvelopeWithATRNonRepaint1.Signal[1] == -1)
 						&& (Close[0] > High[1])
-						 && (RSI1.Default[1] <= RSI_Low)
+						 && (RSI1.Avg[1] <= RSI_Low)
+						  && (IsRising(RSI1.Avg))
 							&& (Open[0] < Close[0])) {
 							Print("Entering Long Nadaraya Watson - RSI on Confirmation Candle");
 							return true;
 					}
 				} else {
 					if ((NadarayaWatsonEnvelopeWithATRNonRepaint1.Signal[0] == 1 || NadarayaWatsonEnvelopeWithATRNonRepaint1.Signal[0] == -1)
-						 && (RSI1.Default[0] <= RSI_Low)
+						 && (RSI1.Avg[0] <= RSI_Low)
+						  && (IsRising(RSI1.Avg))
 							&& (Open[0] < Close[0])) {
 								Print("Entering Long Nadaraya Watson - RSI");
 							return true;
@@ -206,17 +208,17 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					
 		            if ((NadarayaWatsonEnvelopeWithATRNonRepaint1.Signal[1] == -1)
 						&& (Close[0] < Low[1])
-						 && (RSI1.Avg[1] >= RSI_High)
-						 // && IsFalling(RSI1.Default)
+						 && (RSI1.Default[1] >= RSI_High)
+						  && IsFalling(RSI1.Avg)
 							&& Open[0] > Close[0]) {
 								Print("Entering Short Nadaraya Watson - RSI on Confirmation Candle");
 								return true;
 					}
 				} else {
 					if ((NadarayaWatsonEnvelopeWithATRNonRepaint1.Signal[0] == -1)
-						 && (RSI1.Avg[0] >= RSI_High)
+						 && (RSI1.Default[0] >= RSI_High)
 						// && (barsAgo > 1 && barsAgo < 3)
-						  //&& IsFalling(RSI1.Default)
+						  && IsFalling(RSI1.Avg)
 							&& Open[0] > Close[0]) {
 								Print("Entering Short Nadaraya Watson - RSI");
 								return true;
