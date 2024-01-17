@@ -73,7 +73,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 
         private bool startTrail;
 		protected string StrategyName;
-		private bool IsStratEnabled;
+		protected bool IsStratEnabled;
 		private CommonEnums.OrderState orderState;
 		private CommonEnums.OrderType orderType;
 		private CommonEnums.LimitType limitType;
@@ -822,11 +822,11 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					ExitLongStopMarket(0, true, RunnerPositionSize, StopLoss_ATR.TrailingStopLow[0], "Stop " + entryLongString2, entryLongString2);
 				//	Print("Put StopLoss 2 ATR Long");
 				} 
-			} else {
+			}else {
 				Print("Setting Fixed StopLoss Long "+(price - InitialStopLong*TickSize));
 				//SetStopLoss(entryLongString1, CalculationMode.Ticks, InitialStopLong, false);
 				if (isRunner == false) 
-					ExitLongStopMarket(0, true, PositionSize, (price - InitialStopLong*TickSize), "Stop " + entryLongString1, entryLongString1);
+				ExitLongStopMarket(0, true, PositionSize, (price - InitialStopLong*TickSize), "Stop " + entryLongString1, entryLongString1);
 				//Print("Put StopLoss 1 Fixed Long");
 				else {
 				//	SetStopLoss(entryLongString2, CalculationMode.Ticks, InitialStopLong, false);
@@ -1409,7 +1409,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				isProfitTargetHit = true;
 				profitTargetPrice = price;
 				
-				if ((marketPosition == MarketPosition.Long)
+				if ((Position.MarketPosition == MarketPosition.Long)
 				&& (EnableRunner == true)
 				&& (JumpToProfit == true)) {
 				//	SetStopLoss(entryLongString2, CalculationMode.Price, price - JumptoProfitTickOffset*TickSize, false);
@@ -1418,7 +1418,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				}
 			} else if (execution.Order.Name == "Profit Target "+entryShortString1) {
 				
-				if ((marketPosition == MarketPosition.Short)
+				if ((Position.MarketPosition == MarketPosition.Short)
 					&& (EnableRunner == true)
 					&& (JumpToProfit == true)) {
 						//SetStopLoss(entryShortString2, CalculationMode.Price, price + JumptoProfitTickOffset*TickSize, false);

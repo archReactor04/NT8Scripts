@@ -33,8 +33,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor
 		private NinjaTrader.NinjaScript.Indicators.LizardIndicators.amaADXVMA amaADXVMA1;
 		private NinjaTrader.NinjaScript.Indicators.TradeSaber.ReversalTS ReversalTS1;
 		private bool tradeDone = false;
-		private double previousSwingLow;
 		private double previousSwingHigh;
+		private double previousSwingLow;
 		protected override void OnStateChange()
 		{
 			base.OnStateChange();
@@ -46,6 +46,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor
 				StrategyName = "AR_Swing_Breakout_ADXVMA";
 				Strength = 5;
 				Period = 8;
+				previousSwingLow = 0;
+				previousSwingHigh = 0;
             }
 		}
 
@@ -53,7 +55,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor
 		{
 			base.OnBarUpdate();
 			
-			if (ReversalTS1.CurrentReversalBar[0] == 1 || ReversalTS1.CurrentReversalBar[0] == -1) {
+			if (ReversalTS1.CurrentReversalBar[0] == 1 || ReversalTS1.CurrentReversalBar[0] == -1 || IsStratEnabled == false) {
 				tradeDone = false;
 			}
 			
@@ -75,7 +77,6 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor
 				&& previousSwingHigh != Swing1.SwingHigh[0]) {
 				tradeDone = true;
 				previousSwingHigh = Swing1.SwingHigh[0];
-				
 				return true;
 			}
 			return false;
