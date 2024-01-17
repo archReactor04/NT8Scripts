@@ -33,6 +33,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor
 		private NinjaTrader.NinjaScript.Indicators.TradeSaber.ReversalTS ReversalTS1;
 		private NinjaTrader.NinjaScript.Indicators.RipsterEMAClouds RipsterEMAClouds1;
 		private bool tradeDone = false;
+		private double previousSwingHigh;
+		private double previousSwingLow;
 		protected override void OnStateChange()
 		{
 			base.OnStateChange();
@@ -43,6 +45,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor
                 Name = "AR_Swing_Breakout_With_RipsterEMA_Filter";
 				StrategyName = "AR_Swing_Breakout_With_RipsterEMA_Filter";
 				Strength = 5;
+				previousSwingLow = 0;
+				previousSwingHigh = 0;
             }
 		}
 
@@ -50,7 +54,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor
 		{
 			base.OnBarUpdate();
 			
-			if (ReversalTS1.CurrentReversalBar[0] == 1 || ReversalTS1.CurrentReversalBar[0] == -1) {
+			if (ReversalTS1.CurrentReversalBar[0] == 1 || ReversalTS1.CurrentReversalBar[0] == -1 || IsStratEnabled == false) {
 				tradeDone = false;
 			}
 			
@@ -67,16 +71,24 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor
 		}
 		
 		protected override bool validateEntryLong() {
-			if (tradeDone == false && Swing1.SwingHigh[0] < Close[0] && validateRipsterCloud(false) == true) {
+			if (tradeDone == false 
+				&& Swing1.SwingHigh[0] < Close[0] 
+				&& validateRipsterCloud(false) == true
+				&& previousSwingHigh != Swing1.SwingHigh[0]) {
 				tradeDone = true;
+				previousSwingHigh = Swing1.SwingHigh[0];
 				return true;
 			}
 			return false;
 		}
 		
 		protected override bool validateEntryShort() {
-			if (tradeDone == false && Swing1.SwingLow[0] > Close[0] && validateRipsterCloud(true) == true) {
+			if (tradeDone == false 
+				&& Swing1.SwingLow[0] > Close[0] 
+				&& validateRipsterCloud(true) == true
+				&& previousSwingLow != Swing1.SwingLow[0]) {
 				tradeDone = true;
+				previousSwingLow = Swing1.SwingLow[0];
 				return true;
 			}
 			return false;
