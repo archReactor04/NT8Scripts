@@ -32,8 +32,11 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor
 		private SMA SMA2;
 		private NinjaTrader.NinjaScript.Indicators.LizardIndicators.amaADXVMA amaADXVMA1;
 		private NinjaTrader.NinjaScript.Indicators.TradeSaber.ReversalTS ReversalTS1;
+		private NinjaTrader.NinjaScript.Indicators.RangeFilterSimple RangeFilter1;
+		private NinjaTrader.NinjaScript.Indicators.RipsterEMAClouds RipsterEMAClouds1;
+		private NinjaTrader.NinjaScript.Indicators.MovingAverageRibbon MARibbon;
 		private bool tradeDone = false;
-		private double previousSwingHigh;
+		private double previousSwingHigh; 
 		private double previousSwingLow;
 		protected override void OnStateChange()
 		{
@@ -52,11 +55,19 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor
 		}
 
 		protected override void OnBarUpdate()
-		{
+		{ 
 			base.OnBarUpdate();
 			
 			if (ReversalTS1.CurrentReversalBar[0] == 1 || ReversalTS1.CurrentReversalBar[0] == -1 || IsStratEnabled == false) {
 				tradeDone = false;
+			}
+			
+			if (Position.MarketPosition == MarketPosition.Long) {
+				previousSwingHigh = Swing1.SwingHigh[0];
+			}
+			
+			if (Position.MarketPosition == MarketPosition.Short) {
+				previousSwingLow = Swing1.SwingLow[0];
 			}
 			
 		}
@@ -66,15 +77,20 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor
 			Swing1 = Swing(Strength);
 			amaADXVMA1 = amaADXVMA(Period);
 			ReversalTS1= ReversalTS(0, 0, 0, false, null, null, false, null, false);
+			//RangeFilter1 = RangeFilterSimple(100, 2, 30);
 			AddChartIndicator(Swing1);
 			AddChartIndicator(amaADXVMA1);
+			//RipsterEMAClouds1 = RipsterEMAClouds(8, 9, 5, 12, 34, 50, 72, 89, 180, 200, 0, 3);
+			//AddChartIndicator(RipsterEMAClouds1);
+			//AddChartIndicator(RangeFilter1);
 		}
 		
 		protected override bool validateEntryLong() {
 			if (tradeDone == false 
 				&& Swing1.SwingHigh[0] < Close[1] 
 				&& amaADXVMA1.Trend[0] == 1
-				&& previousSwingHigh != Swing1.SwingHigh[0]) {
+				&& previousSwingHigh != Swing1.SwingHigh[0]){
+				//&& RangeFilter1.Trend[0] == 1) {
 				tradeDone = true;
 				previousSwingHigh = Swing1.SwingHigh[0];
 				return true;
@@ -86,13 +102,56 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor
 			if (tradeDone == false 
 				&& Swing1.SwingLow[0] > Close[1] 
 				&& amaADXVMA1.Trend[0] == -1
-				&& previousSwingLow != Swing1.SwingLow[0]) {
+				&& previousSwingLow != Swing1.SwingLow[0]){
+				//&& RangeFilter1.Trend[0] == -1) {
 				tradeDone = true;
 				previousSwingLow = Swing1.SwingLow[0];
 				return true;
 			}
 			return false;
 		}
+		
+		private bool validateRipsterCloud(bool isShort) {
+			/*if (Enable_EMA_Trend_Filter == false) {
+				return true;
+			}*/
+			
+			if (isShort == false) {
+				if (RipsterEMAClouds1.EMA1Trend[0] == 1 && RipsterEMAClouds1.EMA2Trend[0] == 1 && RipsterEMAClouds1.EMA3Trend[0] == 1) {
+					return true;
+				
+				}
+			} else {
+				if (RipsterEMAClouds1.EMA1Trend[0] == -1 && RipsterEMAClouds1.EMA2Trend[0] == -1 && RipsterEMAClouds1.EMA3Trend[0] == -1) {
+					return true;
+				}
+			}
+			return false;
+		}
+		
+		private int validateMovingAverageRibbon() {
+			if(MARibbon.MovingAverage1[0] < MARibbon.MovingAverage2[0] 
+				&& MARibbon.MovingAverage2[0] < MARibbon.MovingAverage3[0]
+				&& MARibbon.MovingAverage3[0] < MARibbon.MovingAverage4[0]
+				&& MARibbon.MovingAverage4[0] < MARibbon.MovingAverage5[0]
+				&& MARibbon.MovingAverage5[0] < MARibbon.MovingAverage6[0]
+				&& MARibbon.MovingAverage6[0] < MARibbon.MovingAverage7[0]
+				&& MARibbon.MovingAverage7[0] < MARibbon.MovingAverage8[0]) {
+					return -1;
+				}
+				
+				if(MARibbon.MovingAverage1[0] > MARibbon.MovingAverage2[0] 
+				&& MARibbon.MovingAverage2[0] > MARibbon.MovingAverage3[0]
+				&& MARibbon.MovingAverage3[0] > MARibbon.MovingAverage4[0]
+				&& MARibbon.MovingAverage4[0] > MARibbon.MovingAverage5[0]
+				&& MARibbon.MovingAverage5[0] > MARibbon.MovingAverage6[0]
+				&& MARibbon.MovingAverage6[0] > MARibbon.MovingAverage7[0]
+				&& MARibbon.MovingAverage7[0] > MARibbon.MovingAverage8[0]) {
+					return 1;
+				}
+				return 0;
+		}
+		
 		#endregion
 		
 		#region Properties

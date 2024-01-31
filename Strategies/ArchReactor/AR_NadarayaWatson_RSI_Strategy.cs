@@ -285,21 +285,6 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			return false;
 		}
 
-		protected override double getCustomStopLossLong() {
-			return NadarayaWatsonEnvelopeWithATRNonRepaint1.UpSignal[1] ;
-		}
-		
-		protected override double getCustomStopLossShort() {
-			return NadarayaWatsonEnvelopeWithATRNonRepaint1.DnSignal[1] ;
-		}
-		
-		protected override double getCustomProfitTargetLong() {
-			return NadarayaWatsonEnvelopeWithATRNonRepaint1.MiddleBand[0] + 20 *TickSize;
-		}
-		
-		protected override double getCustomProfitTargetShort() {
-			return NadarayaWatsonEnvelopeWithATRNonRepaint1.MiddleBand[0] - 20 *TickSize;
-		}
         #endregion
 		
 		#region Properties

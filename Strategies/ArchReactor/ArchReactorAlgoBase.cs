@@ -75,7 +75,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		protected string StrategyName;
 		protected bool IsStratEnabled;
 		private CommonEnums.OrderState orderState;
-		private CommonEnums.OrderType orderType;
+		protected CommonEnums.OrderType orderType;
 		private CommonEnums.LimitType limitType;
 		private bool showLimitTypeOptions;
 		private bool isHistoricalTradeDisplayed;
@@ -105,9 +105,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		private CommonEnums.TrailStopType trailStopType;
 		private bool showTickTrailOptions;
 		private bool showATRTrailOptions;
+		private bool showBarTrailOptions;
 		
-	//	private NinjaTrader.NinjaScript.Indicators.ATR StopLoss_ATR;
-	//	private NinjaTrader.NinjaScript.Indicators.ATR ProfitTarget_ATR; 
 		private NinjaTrader.NinjaScript.Indicators.TradeSaber.ATRTrailBands StopLoss_ATR;
 		private NinjaTrader.NinjaScript.Indicators.TradeSaber.ATRTrailBands ProfitTarget_ATR; 
 		private NinjaTrader.NinjaScript.Indicators.TradeSaber.ATRTrailBands TrailStop_ATR; 
@@ -123,12 +122,23 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		private double orderPriceShort = 0;
 		
 		private Order entryOrder;
+		private int Session1Count;
+		private int Session2Count;
+		private int Session3Count;
+		private int Session4Count;
+		private int SessionNumber;
+		private bool isPnlAchieved;
 
         protected override void OnStateChange() {
             switch (State) {
                 case State.SetDefaults:
                     Description = @"ArchReactorAlgoBase";
                     Name = "ArchReactorAlgoBase";
+					BaseAlgoVersion								= "1.5";
+					StrategyVersion								= "1.0";
+					Author										= "archReactor";
+					Credits										= "archReactor";
+					Disclaimer									= "Use this strategy at your own risk. Author take no responsibility of the losses incurred.";
                     Calculate									= Calculate.OnBarClose;
                     EntriesPerDirection							= 2;
                     EntryHandling								= EntryHandling.AllEntries;
@@ -149,6 +159,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
                     IsInstantiatedOnEachOptimizationIteration	= true;
 					
 					PositionSize					= 1;
+					MaxTradesPerSession				= 4;
 					InitialStopLong					= 30;
 					InitialStopShort				= 30;
 	                TrailStopLong				    = -1;
@@ -161,6 +172,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					PlusBreakeven					= 2;
 	                startTrail                      = false;
 					StrategyName 					= "ArchReactor Strategy";
+					TrailByBars						= 1;
 					orderState = CommonEnums.OrderState.BOTH;
 					IsStratEnabled = true;
 					EnableTrail = true;
@@ -174,8 +186,6 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					showLimitTypeOptions = false;
 					LimitOffset = 0;
 					isHistoricalTradeDisplayed = false;
-					//EnableCustomStopLoss = false;
-					//EnableCustomProfitTarget = false;
 					enableRunner = false;
 					showRunnerOptions = false;
 					RunnerPositionSize = 1;
@@ -187,6 +197,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					trailStopType = CommonEnums.TrailStopType.TickTrail;
 					showTickTrailOptions = false;
 					showATRTrailOptions = false;
+					showBarTrailOptions	= false;
 					
 					TrailStop_ATR_Period = 14;
 					TrailStop_ATR_Mult = 2;
@@ -226,6 +237,14 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					stopLossPriceShort = InitialStopShort;
 					profitTargetPriceLong = ProfitTargetLong;
 					profitTargetPriceShort = ProfitTargetShort;
+					
+					Session1Count = 0;
+					Session2Count = 0;
+					Session3Count = 0;
+					Session4Count = 0;
+					SessionNumber = 0;
+					isPnlAchieved = false;
+					
 					#region ChartTrader Button variables
 				
 					//Row 1
@@ -716,94 +735,177 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		
 		protected abstract void initializeIndicators();
 		
-		protected virtual double getCustomStopLossLong() {
-			return 0;
-		}
-		
-		protected virtual double getCustomStopLossShort() {
-			return 0;
-		}
-		
-		protected virtual double getCustomProfitTargetLong() {
-			return 0;
-		}
-		
-		protected virtual double getCustomProfitTargetShort() {
-			return 0;
-		}
 		
 		protected virtual void addDataSeries() {}
 		
-		protected virtual void gotoProfit() {
-			/*if ((Position.MarketPosition == MarketPosition.Long)
-				&& (EnableRunner == true)
-				&& (JumpToProfit == true)
-				&& (isProfitTargetHit == true)
-				&& (GetCurrentBid() > profitTargetPrice)
-				&& jumpToProfitSet == false) {
-					SetStopLoss(entryLongString2, CalculationMode.Price, profitTargetPrice - JumptoProfitTickOffset*TickSize, false);
-					jumpToProfitSet = true;
-				}
-				
-			if ((Position.MarketPosition == MarketPosition.Short)
-				&& (EnableRunner == true)
-				&& (JumpToProfit == true)
-				&& (isProfitTargetHit == true)
-				&& (GetCurrentBid() < profitTargetPrice)
-				&& jumpToProfitSet == false) {
-					SetStopLoss(entryShortString2, CalculationMode.Price, profitTargetPrice + JumptoProfitTickOffset*TickSize, false);
-					jumpToProfitSet = true;
-				}
-				
-			if ((Position.MarketPosition == MarketPosition.Flat)) {
-				isProfitTargetHit = false;
-				profitTargetPrice = 0;
-				jumpToProfitSet = false;
-			}*/
+		protected virtual bool isCustomStopSet() {
+			return false;
 		}
 		
-		protected bool validateTimeControls() {
+		protected virtual bool isCustomProfitSet() {
+			return false;
+		}
+		
+		protected virtual double customStopLong() {
+			return -1;
+		}
+		
+		protected virtual double customStopShort() {
+			return -1;
+		}
+		
+		protected virtual double customProfitTargetLong(double price) {
+			return -1;
+		}
+		
+		protected virtual double customProfitTargetShort(double price) {
+			return -1;
+		}
+		
+		protected bool validateTimeControlsAndTradeCount() {
 			
 			if (Time_1 == true 
 				&& Times[0][0].TimeOfDay >= Start_Time_1.TimeOfDay
-                 && Times[0][0].TimeOfDay <= Stop_Time_1.TimeOfDay) {
+                 && Times[0][0].TimeOfDay <= Stop_Time_1.TimeOfDay
+				&& Session1Count < MaxTradesPerSession) {
+					SessionNumber = 1;
 					 return true;
 			}
 			if (Time_2 == true 
 				&& Times[0][0].TimeOfDay >= Start_Time_2.TimeOfDay
-                 && Times[0][0].TimeOfDay <= Stop_Time_2.TimeOfDay) {
+                 && Times[0][0].TimeOfDay <= Stop_Time_2.TimeOfDay
+				&& Session2Count < MaxTradesPerSession) {
+					SessionNumber = 2;
 					 return true;
 			}
 			if (Time_3 == true 
 				&& Times[0][0].TimeOfDay >= Start_Time_3.TimeOfDay
-                 && Times[0][0].TimeOfDay <= Stop_Time_3.TimeOfDay) {
+                 && Times[0][0].TimeOfDay <= Stop_Time_3.TimeOfDay
+				&& Session3Count < MaxTradesPerSession) {
+					SessionNumber = 3;
 					 return true;
 			}
 			if (Time_4 == true 
 				&& Times[0][0].TimeOfDay >= Start_Time_4.TimeOfDay
-                 && Times[0][0].TimeOfDay <= Stop_Time_4.TimeOfDay) {
+                 && Times[0][0].TimeOfDay <= Stop_Time_4.TimeOfDay
+				&& Session4Count < MaxTradesPerSession) {
+					SessionNumber = 4;
 					 return true;
 			}
 		    return false;
 		}
 		
+		protected void incrementSessionTradeCount() {
+			if (State == State.Realtime) {
+				if (Time_1 == true 
+					&& Times[0][0].TimeOfDay >= Start_Time_1.TimeOfDay
+	                 && Times[0][0].TimeOfDay <= Stop_Time_1.TimeOfDay) {
+						 Session1Count++;
+				}
+				if (Time_2 == true 
+					&& Times[0][0].TimeOfDay >= Start_Time_2.TimeOfDay
+	                 && Times[0][0].TimeOfDay <= Stop_Time_2.TimeOfDay) {
+						 Session2Count++;
+				}
+				if (Time_3 == true 
+					&& Times[0][0].TimeOfDay >= Start_Time_3.TimeOfDay
+	                 && Times[0][0].TimeOfDay <= Stop_Time_3.TimeOfDay) {
+						 Session3Count++;
+				}
+				if (Time_4 == true 
+					&& Times[0][0].TimeOfDay >= Start_Time_4.TimeOfDay
+	                 && Times[0][0].TimeOfDay <= Stop_Time_4.TimeOfDay) {
+						 Session4Count++;
+				}
+			}
+		}
+		
+		protected void resetSessionTradeCount() {
+			
+			if (Time_1 == true 
+                 && Times[0][0].TimeOfDay > Stop_Time_1.TimeOfDay) {
+					 Session1Count = 0;
+			}
+			if (Time_2 == true 
+                 && Times[0][0].TimeOfDay > Stop_Time_2.TimeOfDay) {
+					 Session2Count = 0;
+			}
+			if (Time_3 == true 
+                 && Times[0][0].TimeOfDay > Stop_Time_3.TimeOfDay) {
+					 Session3Count = 0;
+			}
+			if (Time_4 == true 
+                 && Times[0][0].TimeOfDay > Stop_Time_4.TimeOfDay) {
+					 Session4Count = 0;
+			}
+		}
+		
 		private void validateStrategyPnl() {
 			if (State == State.Realtime && validateStrategytPnlConditions()) {
-					ChartControl.Dispatcher.InvokeAsync(() => {
-						activateButton1.Content = "Strategy Disabled";
-						activateButton1.Name = "StrategyButtonDisabled";
-						activateButton1.Background = Brushes.Gray;
-						activateButton1.BorderBrush = Brushes.Black;
-					});
-					
-					IsStratEnabled = false;
+					enableDisableStrat(false);
 				}
+		}
+		
+		private void validateMaxTradesPerSession() {
+			if (State == State.Realtime) {
+				if (isPnlAchieved == false) {
+					if (Time_1 == true 
+						&& Times[0][0].TimeOfDay >= Start_Time_1.TimeOfDay
+		                 && Times[0][0].TimeOfDay <= Stop_Time_1.TimeOfDay
+						&& Session1Count < MaxTradesPerSession) {
+							
+							enableDisableStrat(true);
+					}
+					else if (Time_2 == true 
+						&& Times[0][0].TimeOfDay >= Start_Time_2.TimeOfDay
+		                 && Times[0][0].TimeOfDay <= Stop_Time_2.TimeOfDay
+						&& Session2Count < MaxTradesPerSession) {
+							enableDisableStrat(true);
+					} 
+					else if (Time_3 == true 
+						&& Times[0][0].TimeOfDay >= Start_Time_3.TimeOfDay
+		                 && Times[0][0].TimeOfDay <= Stop_Time_3.TimeOfDay
+						&& Session3Count < MaxTradesPerSession) {
+							 enableDisableStrat(true);
+					}
+					else if (Time_4 == true 
+						&& Times[0][0].TimeOfDay >= Start_Time_4.TimeOfDay
+		                 && Times[0][0].TimeOfDay <= Stop_Time_4.TimeOfDay
+						&& Session4Count < MaxTradesPerSession) {
+							enableDisableStrat(true);
+					} else {
+						enableDisableStrat(false);
+					}
+				}
+			}
+		}
+		
+		private void enableDisableStrat(bool isEnabled) {
+			if (State == State.Realtime) {
+				if (isEnabled == false) {
+					ChartControl.Dispatcher.InvokeAsync(() => {
+								activateButton1.Content = "Strategy Disabled";
+								activateButton1.Name = "StrategyButtonDisabled";
+								activateButton1.Background = Brushes.Gray;
+								activateButton1.BorderBrush = Brushes.Black;
+							});
+				} else {
+					ChartControl.Dispatcher.InvokeAsync(() => {
+								activateButton1.Content = "Strategy Enabled";
+								activateButton1.Name = "StrategyButtonEnabled";
+								activateButton1.Background = Brushes.Aquamarine;
+								activateButton1.BorderBrush = Brushes.Black;
+					});
+				}
+				IsStratEnabled = isEnabled;
+			}
 		}
 		
 		private bool validateStrategytPnlConditions() {
 			double cumProfit = getCumProfit();
 			if (cumProfit <= MaxLoss || cumProfit >= MaxTarget) {
 				IsStratEnabled = false;
+				isPnlAchieved = true;
 				return true;
 			}
 			return false;
@@ -812,113 +914,172 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		
 		#region StopLoss And ProfitTargetCalculation
 		protected virtual void calculateStopLossPriceLong(double price, bool isRunner) {
-			if (stopLossType == CommonEnums.StopLossType.ATR) {
-				//SetStopLoss(entryLongString1, CalculationMode.Price, StopLoss_ATR.TrailingStopLow[0], false);
-				Print("Setting ATR StopLoss Long "+StopLoss_ATR.TrailingStopLow[0]);
-				if (isRunner == false)
-					ExitLongStopMarket(0, true, PositionSize, StopLoss_ATR.TrailingStopLow[0], "Stop " + entryLongString1, entryLongString1);
-				else {
-					//SetStopLoss(entryLongString2, CalculationMode.Price, StopLoss_ATR.TrailingStopLow[0], false);
-					ExitLongStopMarket(0, true, RunnerPositionSize, StopLoss_ATR.TrailingStopLow[0], "Stop " + entryLongString2, entryLongString2);
-				//	Print("Put StopLoss 2 ATR Long");
-				} 
-			}else {
-				Print("Setting Fixed StopLoss Long "+(price - InitialStopLong*TickSize));
-				//SetStopLoss(entryLongString1, CalculationMode.Ticks, InitialStopLong, false);
-				if (isRunner == false) 
-				ExitLongStopMarket(0, true, PositionSize, (price - InitialStopLong*TickSize), "Stop " + entryLongString1, entryLongString1);
-				//Print("Put StopLoss 1 Fixed Long");
-				else {
-				//	SetStopLoss(entryLongString2, CalculationMode.Ticks, InitialStopLong, false);
-					ExitLongStopMarket(0, true, RunnerPositionSize, (price - InitialStopLong*TickSize), "Stop " + entryLongString2, entryLongString2);
-				//	Print("Put StopLoss 2 Fixed Long");
+			if (isCustomStopSet() == false) {
+				if (stopLossType == CommonEnums.StopLossType.ATR) {
+					//SetStopLoss(entryLongString1, CalculationMode.Price, StopLoss_ATR.TrailingStopLow[0], false);
+					Print("Setting ATR StopLoss Long "+StopLoss_ATR.TrailingStopLow[0]);
+					if (isRunner == false)
+						ExitLongStopMarket(0, true, PositionSize, StopLoss_ATR.TrailingStopLow[0], "Stop " + entryLongString1, entryLongString1);
+					else {
+						//SetStopLoss(entryLongString2, CalculationMode.Price, StopLoss_ATR.TrailingStopLow[0], false);
+						ExitLongStopMarket(0, true, RunnerPositionSize, StopLoss_ATR.TrailingStopLow[0], "Stop " + entryLongString2, entryLongString2);
+					//	Print("Put StopLoss 2 ATR Long");
+					} 
+				} else if (stopLossType == CommonEnums.StopLossType.Fixed){
+					Print("Setting Fixed StopLoss Long "+(price - InitialStopLong*TickSize));
+					//SetStopLoss(entryLongString1, CalculationMode.Ticks, InitialStopLong, false);
+					if (isRunner == false) 
+						ExitLongStopMarket(0, true, PositionSize, (price - InitialStopLong*TickSize), "Stop " + entryLongString1, entryLongString1);
+					//Print("Put StopLoss 1 Fixed Long");
+					else {
+					//	SetStopLoss(entryLongString2, CalculationMode.Ticks, InitialStopLong, false);
+						ExitLongStopMarket(0, true, RunnerPositionSize, (price - InitialStopLong*TickSize), "Stop " + entryLongString2, entryLongString2);
+					//	Print("Put StopLoss 2 Fixed Long");
+					}
 				}
+			} else {
+				double stopLossLong = customStopLong();
+				Print ("Setting Custom Stop Loss Long");
+				
+				if (isRunner == false)
+						ExitLongStopMarket(0, true, PositionSize, stopLossLong, "Stop " + entryLongString1, entryLongString1);
+					else {
+						//SetStopLoss(entryLongString2, CalculationMode.Price, StopLoss_ATR.TrailingStopLow[0], false);
+						ExitLongStopMarket(0, true, RunnerPositionSize, stopLossLong, "Stop " + entryLongString2, entryLongString2);
+					//	Print("Put StopLoss 2 ATR Long");
+					} 
+				
 			}
-			
 		}
 		
 		protected virtual void calculateStopLossPriceShort(double price, bool isRunner) {
-			if (stopLossType == CommonEnums.StopLossType.ATR) {
-				Print("Setting ATR StopLoss Short "+StopLoss_ATR.TrailingStopHigh[0]);
-				//SetStopLoss(entryShortString1, CalculationMode.Price, StopLoss_ATR.TrailingStopHigh[0], false);
-				if (isRunner == false)
-					ExitShortStopMarket(0, true, PositionSize, StopLoss_ATR.TrailingStopHigh[0], "Stop " + entryShortString1, entryShortString1);
-			//	Print("Put StopLoss 1 ATR Short");
-				
-				else {
-					//SetStopLoss(entryShortString2, CalculationMode.Price, StopLoss_ATR.TrailingStopHigh[0], false);
-					ExitShortStopMarket(0, true, RunnerPositionSize, StopLoss_ATR.TrailingStopHigh[0], "Stop " + entryShortString2, entryShortString2);
-				//	Print("Put StopLoss 2 ATR Short");
+			if (isCustomStopSet() == false) {
+				if (stopLossType == CommonEnums.StopLossType.ATR) {
+					Print("Setting ATR StopLoss Short "+StopLoss_ATR.TrailingStopHigh[0]);
+					//SetStopLoss(entryShortString1, CalculationMode.Price, StopLoss_ATR.TrailingStopHigh[0], false);
+					if (isRunner == false)
+						ExitShortStopMarket(0, true, PositionSize, StopLoss_ATR.TrailingStopHigh[0], "Stop " + entryShortString1, entryShortString1);
+				//	Print("Put StopLoss 1 ATR Short");
+					
+					else {
+						//SetStopLoss(entryShortString2, CalculationMode.Price, StopLoss_ATR.TrailingStopHigh[0], false);
+						ExitShortStopMarket(0, true, RunnerPositionSize, StopLoss_ATR.TrailingStopHigh[0], "Stop " + entryShortString2, entryShortString2);
+					//	Print("Put StopLoss 2 ATR Short");
+					}
+				} else {
+					Print("Setting Fixed StopLoss Short "+(price + InitialStopLong*TickSize));
+					//SetStopLoss(entryShortString1, CalculationMode.Ticks, InitialStopShort, false);
+					if (isRunner == false)
+						ExitShortStopMarket(0, true, PositionSize, (price + InitialStopShort*TickSize), "Stop " + entryShortString1, entryShortString1);
+				//	Print("Put StopLoss 1 Fixed Short");
+					else {
+						//SetStopLoss(entryShortString2, CalculationMode.Ticks, InitialStopShort, false);
+						ExitShortStopMarket(0, true, RunnerPositionSize, (price + InitialStopShort*TickSize), "Stop " + entryShortString2, entryShortString2);
+					//	Print("Put StopLoss 2 Fixed Short");
+					}
 				}
 			} else {
-				Print("Setting Fixed StopLoss Short "+(price + InitialStopLong*TickSize));
-				//SetStopLoss(entryShortString1, CalculationMode.Ticks, InitialStopShort, false);
+				double stopLossShort = customStopShort();
+				Print ("Setting Custom Stop Loss Short");
+				
 				if (isRunner == false)
-					ExitShortStopMarket(0, true, PositionSize, (price + InitialStopShort*TickSize), "Stop " + entryShortString1, entryShortString1);
-			//	Print("Put StopLoss 1 Fixed Short");
-				else {
-					//SetStopLoss(entryShortString2, CalculationMode.Ticks, InitialStopShort, false);
-					ExitShortStopMarket(0, true, RunnerPositionSize, (price + InitialStopShort*TickSize), "Stop " + entryShortString2, entryShortString2);
-				//	Print("Put StopLoss 2 Fixed Short");
-				}
+						ExitShortStopMarket(0, true, PositionSize, stopLossShort, "Stop " + entryShortString1, entryShortString1);
+					else {
+						//SetStopLoss(entryLongString2, CalculationMode.Price, StopLoss_ATR.TrailingStopLow[0], false);
+						ExitShortStopMarket(0, true, RunnerPositionSize, stopLossShort, "Stop " + entryShortString2, entryShortString2);
+					//	Print("Put StopLoss 2 ATR Long");
+					} 
+				
 			}
 			
 		}
 		
 		protected virtual void calculateProfitTargetPriceLong(double price, bool isRunner) {
-			if (profitTargetType == CommonEnums.ProfitTargetType.ATR) {
-				Print("Setting ATR Profit Target Long "+ ProfitTarget_ATR.TrailingStopHigh[0]);
-				//SetProfitTarget(entryLongString1, CalculationMode.Price, ProfitTarget_ATR.TrailingStopHigh[0], false);
-				
-				if (isRunner == false) 
-					ExitLongLimit(0, true, PositionSize, ProfitTarget_ATR.TrailingStopHigh[0], "Profit Target "+entryLongString1, entryLongString1);
-				//Print("Put Profit Target 1 ATR Long");
-				
-				else {
-					//SetProfitTarget(entryLongString2, CalculationMode.Price, Runner_ATR.TrailingStopHigh[0], false);
-					ExitLongLimit(0, true, RunnerPositionSize, Runner_ATR.TrailingStopHigh[0], "Profit Target "+entryLongString2, entryLongString2);
+			if (isCustomProfitSet() == false) {
+				if (profitTargetType == CommonEnums.ProfitTargetType.ATR) {
+					Print("Setting ATR Profit Target Long "+ ProfitTarget_ATR.TrailingStopHigh[0]);
+					//SetProfitTarget(entryLongString1, CalculationMode.Price, ProfitTarget_ATR.TrailingStopHigh[0], false);
 					
-				//	Print("Put Profit Target 2 ATR Long");
+					if (isRunner == false) 
+						ExitLongLimit(0, true, PositionSize, ProfitTarget_ATR.TrailingStopHigh[0], "Profit Target "+entryLongString1, entryLongString1);
+					//Print("Put Profit Target 1 ATR Long");
+					
+					else {
+						//SetProfitTarget(entryLongString2, CalculationMode.Price, Runner_ATR.TrailingStopHigh[0], false);
+						ExitLongLimit(0, true, RunnerPositionSize, Runner_ATR.TrailingStopHigh[0], "Profit Target "+entryLongString2, entryLongString2);
+						
+					//	Print("Put Profit Target 2 ATR Long");
+					}
+				} else {
+			//	if (profitTargetType == CommonEnums.ProfitTargetType.Fixed) {
+					Print("Setting Fixed Profit Target Long "+ (price + ProfitTargetLong*TickSize));
+					//SetProfitTarget(entryLongString1, CalculationMode.Ticks, ProfitTargetLong, false);
+					if (isRunner == false)
+						ExitLongLimit(0, true, PositionSize, price + ProfitTargetLong*TickSize, "Profit Target "+entryLongString1, entryLongString1);
+					//Print("Put Profit Target 1 Fixed Long");
+					else {
+						//SetProfitTarget(entryLongString2, CalculationMode.Ticks, ProfitTargetLong * Runner_Mult, false);
+						ExitLongLimit(0, true, RunnerPositionSize, price+ (ProfitTargetLong * Runner_Mult)*TickSize, "Profit Target "+entryLongString2, entryLongString2);
+						//Print("Put Profit Target 1 Fixed Long");
+					}
 				}
 			} else {
-		//	if (profitTargetType == CommonEnums.ProfitTargetType.Fixed) {
-				Print("Setting Fixed Profit Target Long "+ (price + ProfitTargetLong*TickSize));
-				//SetProfitTarget(entryLongString1, CalculationMode.Ticks, ProfitTargetLong, false);
+					
+				double profitTargetLong = customProfitTargetLong(price);
+				double profitTargetInTicks = (profitTargetLong - price) / TickSize;
+				Print("Setting Custom Profit Target Long "+ (profitTargetLong));
 				if (isRunner == false)
-					ExitLongLimit(0, true, PositionSize, price + ProfitTargetLong*TickSize, "Profit Target "+entryLongString1, entryLongString1);
-				//Print("Put Profit Target 1 Fixed Long");
-				else {
-					//SetProfitTarget(entryLongString2, CalculationMode.Ticks, ProfitTargetLong * Runner_Mult, false);
-					ExitLongLimit(0, true, RunnerPositionSize, price+ (ProfitTargetLong * Runner_Mult)*TickSize, "Profit Target "+entryLongString2, entryLongString2);
+						ExitLongLimit(0, true, PositionSize, profitTargetLong, "Profit Target "+entryLongString1, entryLongString1);
 					//Print("Put Profit Target 1 Fixed Long");
-				}
+					else {
+						//SetProfitTarget(entryLongString2, CalculationMode.Ticks, ProfitTargetLong * Runner_Mult, false);
+						ExitLongLimit(0, true, RunnerPositionSize, price + (profitTargetInTicks * Runner_Mult)*TickSize, "Profit Target "+entryLongString2, entryLongString2);
+						//Print("Put Profit Target 1 Fixed Long");
+					}
+				
 			}
 		}
 		
 		protected virtual void calculateProfitTargetPriceShort(double price, bool isRunner) {
-			 if (profitTargetType == CommonEnums.ProfitTargetType.ATR) {
-				 Print("Setting ATR Profit Target Short "+ ProfitTarget_ATR.TrailingStopLow[0]);
-			//	SetProfitTarget(entryShortString1, CalculationMode.Price,ProfitTarget_ATR.TrailingStopLow[0], false);
-				if (isRunner == false)
-				 	ExitShortLimit(0, true, PositionSize, ProfitTarget_ATR.TrailingStopLow[0], "Profit Target "+entryShortString1, entryShortString1);
-				//Print("Put Profit Target 1 ATR Short");
-				else {
-					//SetProfitTarget(entryShortString2, CalculationMode.Price, Runner_ATR.TrailingStopLow[0], false);
-					ExitShortLimit(0 , true, RunnerPositionSize, Runner_ATR.TrailingStopLow[0], "Profit Target "+entryShortString2, entryShortString2);
-					//Print("Put Profit Target 2 ATR Short");
+			if (isCustomProfitSet() == false) { 
+				if (profitTargetType == CommonEnums.ProfitTargetType.ATR) {
+					 Print("Setting ATR Profit Target Short "+ ProfitTarget_ATR.TrailingStopLow[0]);
+				//	SetProfitTarget(entryShortString1, CalculationMode.Price,ProfitTarget_ATR.TrailingStopLow[0], false);
+					if (isRunner == false)
+					 	ExitShortLimit(0, true, PositionSize, ProfitTarget_ATR.TrailingStopLow[0], "Profit Target "+entryShortString1, entryShortString1);
+					//Print("Put Profit Target 1 ATR Short");
+					else {
+						//SetProfitTarget(entryShortString2, CalculationMode.Price, Runner_ATR.TrailingStopLow[0], false);
+						ExitShortLimit(0 , true, RunnerPositionSize, Runner_ATR.TrailingStopLow[0], "Profit Target "+entryShortString2, entryShortString2);
+						//Print("Put Profit Target 2 ATR Short");
+					}
+				} else {
+					Print("Setting Fixed Profit Target Short "+ (price - ProfitTargetLong*TickSize));
+					//SetProfitTarget(entryShortString1, CalculationMode.Ticks, ProfitTargetShort, false);
+					if (isRunner == false)
+						ExitShortLimit(0, true, PositionSize, price - ProfitTargetShort*TickSize, "Profit Target "+entryShortString1, entryShortString1);
+					//Print("Put Profit Target 1 Fixed Short");
+					
+					else {
+						//SetProfitTarget(entryShortString2, CalculationMode.Ticks, ProfitTargetShort * Runner_Mult, false);
+						ExitShortLimit(0, true, RunnerPositionSize, price - (ProfitTargetShort * Runner_Mult)*TickSize, "Profit Target "+entryShortString2, entryShortString2);
+						//Print("Put Profit Target 2 Fixed Short "+Position.AveragePrice - (ProfitTargetShort * Runner_Mult)*TickSize);
+					}
 				}
 			} else {
-				Print("Setting Fixed Profit Target Short "+ (price - ProfitTargetLong*TickSize));
-				//SetProfitTarget(entryShortString1, CalculationMode.Ticks, ProfitTargetShort, false);
+					
+				double profitTargetShort = customProfitTargetShort(price);
+				double profitTargetInTicks = (price - profitTargetShort) / TickSize;
+				Print("Setting Custom Profit Target Short "+ (profitTargetShort));
 				if (isRunner == false)
-					ExitShortLimit(0, true, PositionSize, price - ProfitTargetShort*TickSize, "Profit Target "+entryShortString1, entryShortString1);
-				//Print("Put Profit Target 1 Fixed Short");
+						ExitShortLimit(0, true, PositionSize, profitTargetShort, "Profit Target "+entryShortString1, entryShortString1);
+					//Print("Put Profit Target 1 Fixed Long");
+					else {
+						//SetProfitTarget(entryLongString2, CalculationMode.Ticks, ProfitTargetLong * Runner_Mult, false);
+						ExitShortLimit(0, true, RunnerPositionSize, price - (profitTargetInTicks * Runner_Mult)*TickSize, "Profit Target "+entryShortString2, entryShortString2);
+						//Print("Put Profit Target 1 Fixed Long");
+					}
 				
-				else {
-					//SetProfitTarget(entryShortString2, CalculationMode.Ticks, ProfitTargetShort * Runner_Mult, false);
-					ExitShortLimit(0, true, RunnerPositionSize, price - (ProfitTargetShort * Runner_Mult)*TickSize, "Profit Target "+entryShortString2, entryShortString2);
-					//Print("Put Profit Target 2 Fixed Short "+Position.AveragePrice - (ProfitTargetShort * Runner_Mult)*TickSize);
-				}
 			}
 			
 		}
@@ -968,7 +1129,9 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 							} else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
 								//newPrice =  (previousPrice < TrailStop_ATR.TrailingStopLow[0]) ? TrailStop_ATR.TrailingStopLow[0] : previousPrice;
 								newPrice =  TrailStop_ATR.TrailingStopLow[0];
-							} 
+							} else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice < Low[TrailByBars]) {
+								newPrice = Low[TrailByBars];
+							}
 							//SetStopLoss(entryLongString1, CalculationMode.Price, newPrice, false);			// Readjust stoploss level	
 							ExitLongStopMarket(0, true, PositionSize, newPrice, "Stop " + entryLongString1, entryLongString1);
 							if (enableRunner == true) {
@@ -991,6 +1154,9 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 								//newPrice = (previousPrice < TrailStop_ATR.TrailingStopLow[0]) ? TrailStop_ATR.TrailingStopLow[0] : previousPrice;
 								newPrice =  TrailStop_ATR.TrailingStopLow[0];
 							} 	// Calculate trail stop adjustment
+							else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice < Low[TrailByBars]) {
+								newPrice = Low[TrailByBars];
+							}
 						
 							//SetStopLoss(entryLongString1, CalculationMode.Price, newPrice, false);			// Readjust stoploss level	
 							ExitLongStopMarket(0, true, PositionSize, newPrice, "Stop " + entryLongString1, entryLongString1);
@@ -1038,7 +1204,9 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 							} else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
 								//newPrice = (previousPrice > TrailStop_ATR.TrailingStopHigh[0]) ? TrailStop_ATR.TrailingStopHigh[0] : previousPrice;
 								newPrice = TrailStop_ATR.TrailingStopHigh[0];
-							} 
+							} else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice > High[TrailByBars]) {
+								newPrice = High[TrailByBars];
+							}
 							//SetStopLoss(entryShortString1, CalculationMode.Price, newPrice, false);
 							ExitShortStopMarket(0, true, PositionSize, newPrice, "Stop " + entryShortString1, entryShortString1);
 							if (enableRunner == true) {
@@ -1060,6 +1228,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 								}  else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
 									newPrice = (previousPrice > TrailStop_ATR.TrailingStopHigh[0]) ? TrailStop_ATR.TrailingStopHigh[0] : previousPrice;
 									newPrice = TrailStop_ATR.TrailingStopHigh[0];
+								} else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice > High[TrailByBars]) {
+									newPrice = High[TrailByBars];
 								}
 								//SetStopLoss(entryShortString1, CalculationMode.Price, newPrice, false);
 								ExitShortStopMarket(0, true, PositionSize, newPrice, "Stop " + entryShortString1, entryShortString1);
@@ -1087,14 +1257,11 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
             if (CurrentBar < BarsRequiredToTrade)
                 return;
 			
-			if (IsStratEnabled == false) {
-				return;
-			}
 
-            if ((Position.MarketPosition == MarketPosition.Flat)
+            if (IsStratEnabled == true && (Position.MarketPosition == MarketPosition.Flat)
 				&& (orderState == CommonEnums.OrderState.BOTH || orderState == CommonEnums.OrderState.LONGS) 
                 && validateEntryLong()
-				&& validateTimeControls()
+				&& validateTimeControlsAndTradeCount()
                 && ((BarsSinceEntryExecution(0, "", 0) == -1)
 					 || (BarsSinceEntryExecution(0, "", 0) > 1))) {
                 
@@ -1106,24 +1273,26 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					
 				} else if (orderType == CommonEnums.OrderType.LIMIT) {
 					if (limitType == CommonEnums.LimitType.CLOSE) {
-						EnterLongLimit(Convert.ToInt32(PositionSize), Close[0] + LimitOffset*TickSize, entryLongString1);
+						EnterLongStopMarket(Convert.ToInt32(PositionSize), Close[0] + LimitOffset*TickSize, entryLongString1);
 						if (enableRunner == true) {
-							EnterLongLimit(Convert.ToInt32(RunnerPositionSize), Close[0] + LimitOffset*TickSize, entryLongString2);
+							EnterLongStopMarket(Convert.ToInt32(RunnerPositionSize), Close[0] + LimitOffset*TickSize, entryLongString2);
 						}
 					} else if (limitType == CommonEnums.LimitType.HILO) {
 						Print("LimitOffset "+LimitOffset);
-						EnterLongLimit(Convert.ToInt32(PositionSize), High[0] + LimitOffset*TickSize, entryLongString1);
+						Print("High[0] "+High[0]);
+						EnterLongStopMarket(Convert.ToInt32(PositionSize), High[0] + LimitOffset*TickSize, entryLongString1);
 						if (enableRunner == true) {
-							EnterLongLimit(Convert.ToInt32(RunnerPositionSize), High[0] + LimitOffset*TickSize, entryLongString2);
+							EnterLongStopMarket(Convert.ToInt32(RunnerPositionSize), High[0] + LimitOffset*TickSize, entryLongString2);
 						}
 					}
 				}
+				incrementSessionTradeCount();
             }
 
-            if ((Position.MarketPosition == MarketPosition.Flat)
+            if (IsStratEnabled == true && (Position.MarketPosition == MarketPosition.Flat)
 				&& (orderState == CommonEnums.OrderState.BOTH || orderState == CommonEnums.OrderState.SHORTS) 
                 && validateEntryShort()
-				&& validateTimeControls()
+				&& validateTimeControlsAndTradeCount()
                 && ((BarsSinceEntryExecution(0, "", 0) == -1)
 					 || (BarsSinceEntryExecution(0, "", 0) > 1))) {
 				if (orderType == CommonEnums.OrderType.MARKET) {
@@ -1133,22 +1302,25 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					}
 				} else if (orderType == CommonEnums.OrderType.LIMIT) {
 					if (limitType == CommonEnums.LimitType.CLOSE) {
-						EnterShortLimit(0, false, Convert.ToInt32(PositionSize), Close[0] - LimitOffset*TickSize, entryShortString1);
+						EnterShortStopMarket(0, false, Convert.ToInt32(PositionSize), Close[0] - LimitOffset*TickSize, entryShortString1);
 						if (enableRunner == true) {
-							EnterShortLimit(Convert.ToInt32(RunnerPositionSize), Close[0] - LimitOffset*TickSize, entryShortString2);
+							EnterShortStopMarket(Convert.ToInt32(RunnerPositionSize), Close[0] - LimitOffset*TickSize, entryShortString2);
 						}
 					} else if (limitType == CommonEnums.LimitType.HILO) {
-						entryOrder = EnterShortLimit(0, false, Convert.ToInt32(PositionSize), Low[0] - LimitOffset*TickSize, entryShortString1);
+						entryOrder = EnterShortStopMarket(0, false, Convert.ToInt32(PositionSize), Low[0] - LimitOffset*TickSize, entryShortString1);
 						if (enableRunner == true) {
-							EnterShortLimit(Convert.ToInt32(RunnerPositionSize), Low[0] - LimitOffset*TickSize, entryShortString2);
+							EnterShortStopMarket(Convert.ToInt32(RunnerPositionSize), Low[0] - LimitOffset*TickSize, entryShortString2);
 						}
 					}
 				}
+				incrementSessionTradeCount();
 
             }
 
 			calculateTrailStopAndBE();
+			validateMaxTradesPerSession();
 			validateStrategyPnl();	
+			resetSessionTradeCount();
 			
 			if (Position.MarketPosition == MarketPosition.Long) {
 				if (validateExitLong() == true) {
@@ -1186,16 +1358,25 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				col.Remove(col.Find("TrailStepTicks", true));
 				col.Remove(col.Find("TrailStop_ATR_Period", true));
 				col.Remove(col.Find("TrailStop_ATR_Mult", true));
+				col.Remove(col.Find("TrailByBars", true));
 			}
 		}
 		
 		private void ModifyTrailStopTypeProperties(PropertyDescriptorCollection col) {
+			Print("showTickTrailOptions "+showTickTrailOptions);
+			Print("showATRTrailOptions "+ showATRTrailOptions);
+			Print("showBarTrailOptions "+showBarTrailOptions);
 			if (showTickTrailOptions == false) {
 				col.Remove(col.Find("TrailStepTicks", true));
-			} else if (showATRTrailOptions == false) {
+			} 
+			if (showATRTrailOptions == false) {
 				col.Remove(col.Find("TrailStop_ATR_Period", true));
 				col.Remove(col.Find("TrailStop_ATR_Mult", true));
-			} 
+			}
+			if (showBarTrailOptions == false) {
+				Print("Remove Trail By Bars");
+				col.Remove(col.Find("TrailByBars", true));
+			}
 		}
 		
 		private void ModifyBreakevenProperties(PropertyDescriptorCollection col) {
@@ -1218,7 +1399,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			if (showFixedStopLossOptions == false) {
 				col.Remove(col.Find("InitialStopLong", true));
 				col.Remove(col.Find("InitialStopShort", true));
-			} else if (showATRStopLossOptions== false) {
+			} 
+			if (showATRStopLossOptions== false) {
 				col.Remove(col.Find("StopLoss_ATR_Period", true));
 				col.Remove(col.Find("StopLoss_ATR_Mult", true));
 			}
@@ -1228,7 +1410,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			if (showFixedProfitTargetOptions == false) {
 				col.Remove(col.Find("ProfitTargetLong", true));
 				col.Remove(col.Find("ProfitTargetShort", true));
-			} else if (showATRProfitTargetOptions == false) {
+			} 
+			if (showATRProfitTargetOptions == false) {
 				col.Remove(col.Find("ProfitTarget_ATR_Period", true));
 				col.Remove(col.Find("ProfitTarget_ATR_Mult", true));
 			}
@@ -1357,13 +1540,26 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			string textLine0 = "Realtime Strategy PnL";
 			string textLine1 = "Cumulative Profit: "+ (cumProfit < 0 ? "($"+cumProfit+")" : "$"+cumProfit);
 			string textLine2 = "";
+			string textLine3 = "";
+			string textLine4 = "";
 			if (cumProfit <= MaxLoss) {
-				textLine2 = "Max Loss level reached :( ";
+				textLine4 = "Max Loss level reached :( ";
 			} else if (cumProfit >= MaxTarget) {
-				textLine2 = "Max Target level reached :) ";
+				textLine4 = "Max Target level reached :) ";
 			}
 			
-			string realTimeTradeText = textLine0 + "\n" + textLine1 + "\n" + textLine2;
+			textLine2  = "Session Number: " + SessionNumber;
+			
+			if (SessionNumber == 1)
+				textLine3 = "Trades in this Session: " + Session1Count;
+			if (SessionNumber == 2)
+				textLine3 = "Trades in this Session: " + Session2Count;
+			if (SessionNumber == 3)
+				textLine3 = "Trades in this Session: " + Session3Count;
+			if (SessionNumber == 4)
+				textLine3 = "Trades in this Session: " + Session4Count;
+			
+			string realTimeTradeText = textLine0 + "\n" + textLine1 + "\n" + textLine2 + "\n" + textLine3 + "\n" + textLine4;
 			SimpleFont font = new SimpleFont("Courier New", 12) { Size = 15, Bold = true };
 			Draw.TextFixed(this, "realTimeTradeText", realTimeTradeText, DisplayStrategyPnLOrientation, Brushes.Aquamarine, font, Brushes.Aquamarine, Brushes.Transparent, 0);
 		}
@@ -1430,6 +1626,32 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		#endregion
 		
 		#region Properties
+		
+		[NinjaScriptProperty]
+		[Display(Name="BaseAlgoVersion", Order=1, GroupName="0. Strategy Information")]
+		public string BaseAlgoVersion
+		{ get; set; }
+		
+		[NinjaScriptProperty]
+		[Display(Name="StrategyVersion", Order=2, GroupName="0. Strategy Information")]
+		public string StrategyVersion
+		{ get; set; }
+		
+		[NinjaScriptProperty]
+		[Display(Name="Author", Order=3, GroupName="0. Strategy Information")]
+		public string Author
+		{ get; set; }
+		
+		[NinjaScriptProperty]
+		[Display(Name="Credits", Order=3, GroupName="0. Strategy Information")]
+		public string Credits
+		{ get; set; }
+		
+		[NinjaScriptProperty]
+		[Display(Name="Disclaimer", Order=4, GroupName="0. Strategy Information")]
+		public string Disclaimer
+		{ get; set; }
+		
 
         [NinjaScriptProperty]
 		[Range(1, int.MaxValue)]
@@ -1466,6 +1688,12 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		[Range(0, int.MaxValue)]
 		[Display(Name="LimitOffset", Order=4, GroupName="2. Order Params")]
 		public int LimitOffset
+		{ get; set; }
+		
+		[NinjaScriptProperty]
+		[Range(1, int.MaxValue)]
+		[Display(Name="MaxTradesPerSession", Order=1, GroupName="2. Order Params")]
+		public int MaxTradesPerSession
 		{ get; set; }
 		
 		[NinjaScriptProperty]
@@ -1570,6 +1798,9 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					showTrailOptions = true;
 				} else {
 					showTrailOptions = false;
+					showTickTrailOptions = false;
+					showATRTrailOptions = false;
+					showBarTrailOptions = false;
 				}
 			}
 		}
@@ -1583,11 +1814,18 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			set { 
 				trailStopType = value; 
 				if (trailStopType == CommonEnums.TrailStopType.TickTrail) {
+					Print("Tick Trail");
 					showTickTrailOptions = true;
 					showATRTrailOptions = false;
+					showBarTrailOptions = false;
 				} else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
 					showTickTrailOptions = false;
 					showATRTrailOptions = true;
+					showBarTrailOptions = false;
+				} else if (trailStopType == CommonEnums.TrailStopType.BarTrail) {
+					showTickTrailOptions = false;
+					showATRTrailOptions = false;
+					showBarTrailOptions = true;
 				}
 			}
 		}
@@ -1614,6 +1852,12 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		[Range(1, double.MaxValue)]
 		[Display(Name="TrailStop_ATR_Mult", Order=6, GroupName="2.3 Order Params - Trail")]
 		public double TrailStop_ATR_Mult
+		{ get; set; }
+		
+		[NinjaScriptProperty]
+        [Range(1, 5)]
+		[Display(Name="TrailByBars", Order=7, GroupName="2.3 Order Params - Trail")]
+		public int TrailByBars
 		{ get; set; }
 		
 		[NinjaScriptProperty]
@@ -1824,13 +2068,15 @@ namespace CommonEnums
 	public enum LimitType
 	{
 		CLOSE,
-		HILO
+		HILO,
+		CUSTOM
 	}
 	
 	public enum StopLossType
 	{
 		Fixed,
-		ATR
+		ATR,
+		Custom
 	}
 	
 	public enum ProfitTargetType
@@ -1842,7 +2088,8 @@ namespace CommonEnums
 	public enum TrailStopType
 	{
 		TickTrail,
-		ATRTrail
+		ATRTrail,
+		BarTrail
 	}
 }
 
