@@ -128,13 +128,14 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		private int Session4Count;
 		private int SessionNumber;
 		private bool isPnlAchieved;
+		private bool ManuallyDisabled = false;
 
         protected override void OnStateChange() {
             switch (State) {
                 case State.SetDefaults:
                     Description = @"ArchReactorAlgoBase";
                     Name = "ArchReactorAlgoBase";
-					BaseAlgoVersion								= "1.5";
+					BaseAlgoVersion								= "1.6";
 					StrategyVersion								= "1.0";
 					Author										= "archReactor";
 					Credits										= "archReactor";
@@ -336,6 +337,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				button.Background = Brushes.Gray;
 				button.BorderBrush = Brushes.Black;
 				IsStratEnabled = false;
+				ManuallyDisabled = true;
 				return;
 			}
 			
@@ -345,7 +347,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				button.Name = "StrategyButtonEnabled";
 				button.Background = Brushes.Aquamarine;
 				button.BorderBrush = Brushes.Black;
-				IsStratEnabled = true;			
+				IsStratEnabled = true;
+				ManuallyDisabled = false;
 				return;
 			}
 			//Draw.TextFixed(this, "infobox", "Button 1 Clicked", TextPosition.BottomLeft, Brushes.Green, new Gui.Tools.SimpleFont("Arial", 25), Brushes.Transparent, Brushes.Transparent, 100);
@@ -769,7 +772,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
                  && Times[0][0].TimeOfDay <= Stop_Time_1.TimeOfDay
 				&& Session1Count < MaxTradesPerSession) {
 					SessionNumber = 1;
-					 return true;
+					return true;
+					 
 			}
 			if (Time_2 == true 
 				&& Times[0][0].TimeOfDay >= Start_Time_2.TimeOfDay
@@ -848,12 +852,11 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		
 		private void validateMaxTradesPerSession() {
 			if (State == State.Realtime) {
-				if (isPnlAchieved == false) {
+				if (isPnlAchieved == false && ManuallyDisabled == false) {
 					if (Time_1 == true 
 						&& Times[0][0].TimeOfDay >= Start_Time_1.TimeOfDay
 		                 && Times[0][0].TimeOfDay <= Stop_Time_1.TimeOfDay
-						&& Session1Count < MaxTradesPerSession) {
-							
+						&& Session1Count < MaxTradesPerSession) {		
 							enableDisableStrat(true);
 					}
 					else if (Time_2 == true 
