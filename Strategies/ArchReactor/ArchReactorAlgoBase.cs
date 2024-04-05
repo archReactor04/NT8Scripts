@@ -129,13 +129,21 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		private int SessionNumber;
 		private bool isPnlAchieved;
 		private bool ManuallyDisabled = false;
+		private bool showBarsSinceEntryOptions = false;
+		private bool enableExitByBarsSinceEntry = false;
+		
+		private Brush time1Color = Brushes.Transparent;
+		private Brush time2Color = Brushes.Transparent;
+		private Brush time3Color = Brushes.Transparent;
+		private Brush time4Color = Brushes.Transparent;
+		
 
         protected override void OnStateChange() {
             switch (State) {
                 case State.SetDefaults:
                     Description = @"ArchReactorAlgoBase";
                     Name = "ArchReactorAlgoBase";
-					BaseAlgoVersion								= "1.6";
+					BaseAlgoVersion								= "1.7";
 					StrategyVersion								= "1.0";
 					Author										= "archReactor";
 					Credits										= "archReactor";
@@ -246,6 +254,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					SessionNumber = 0;
 					isPnlAchieved = false;
 					
+					BarsSinceEntry = 10;
+					
 					#region ChartTrader Button variables
 				
 					//Row 1
@@ -312,6 +322,11 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					}
 				
                     break;     
+					#endregion
+					
+					#region change background back to normal
+					if(BackBrushAll 		   != null)
+						BackBrushAll  			= null;
 					#endregion
 						
             }
@@ -741,29 +756,36 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		
 		protected virtual void addDataSeries() {}
 		
-		protected virtual bool isCustomStopSet() {
+		protected bool isCustomStopSet() {
+			if (stopLossType == CommonEnums.StopLossType.Custom) {
+				return true;
+			}
 			return false;
 		}
 		
-		protected virtual bool isCustomProfitSet() {
+		protected bool isCustomProfitSet() {
+			if (profitTargetType == CommonEnums.ProfitTargetType.Custom) {
+				return true;
+			}
 			return false;
 		}
 		
 		protected virtual double customStopLong() {
-			return -1;
+			return Low[0];
 		}
 		
 		protected virtual double customStopShort() {
-			return -1;
+			return High[0];
 		}
 		
 		protected virtual double customProfitTargetLong(double price) {
-			return -1;
+			return price + ProfitTargetLong*TickSize;
 		}
 		
 		protected virtual double customProfitTargetShort(double price) {
-			return -1;
+			return price - ProfitTargetShort*TickSize;
 		}
+		
 		
 		protected bool validateTimeControlsAndTradeCount() {
 			
@@ -797,6 +819,34 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					 return true;
 			}
 		    return false;
+		}
+		
+		protected void regionColor() {
+			
+			if (Time_1 == true 
+				&& Times[0][0].TimeOfDay >= Start_Time_1.TimeOfDay
+                 && Times[0][0].TimeOfDay <= Stop_Time_1.TimeOfDay) {
+					BackBrushAll = Time1Color;
+					 
+			}
+			if (Time_2 == true 
+				&& Times[0][0].TimeOfDay >= Start_Time_2.TimeOfDay
+                 && Times[0][0].TimeOfDay <= Stop_Time_2.TimeOfDay
+				&& Session2Count < MaxTradesPerSession) {
+					BackBrushAll = Time2Color;
+			}
+			if (Time_3 == true 
+				&& Times[0][0].TimeOfDay >= Start_Time_3.TimeOfDay
+                 && Times[0][0].TimeOfDay <= Stop_Time_3.TimeOfDay
+				&& Session3Count < MaxTradesPerSession) {
+					BackBrushAll = Time3Color;
+			}
+			if (Time_4 == true 
+				&& Times[0][0].TimeOfDay >= Start_Time_4.TimeOfDay
+                 && Times[0][0].TimeOfDay <= Stop_Time_4.TimeOfDay
+				&& Session4Count < MaxTradesPerSession) {
+					BackBrushAll = Time4Color;
+			}
 		}
 		
 		protected void incrementSessionTradeCount() {
@@ -850,38 +900,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				}
 		}
 		
-		private void validateMaxTradesPerSession() {
-			if (State == State.Realtime) {
-				if (isPnlAchieved == false && ManuallyDisabled == false) {
-					if (Time_1 == true 
-						&& Times[0][0].TimeOfDay >= Start_Time_1.TimeOfDay
-		                 && Times[0][0].TimeOfDay <= Stop_Time_1.TimeOfDay
-						&& Session1Count < MaxTradesPerSession) {		
-							enableDisableStrat(true);
-					}
-					else if (Time_2 == true 
-						&& Times[0][0].TimeOfDay >= Start_Time_2.TimeOfDay
-		                 && Times[0][0].TimeOfDay <= Stop_Time_2.TimeOfDay
-						&& Session2Count < MaxTradesPerSession) {
-							enableDisableStrat(true);
-					} 
-					else if (Time_3 == true 
-						&& Times[0][0].TimeOfDay >= Start_Time_3.TimeOfDay
-		                 && Times[0][0].TimeOfDay <= Stop_Time_3.TimeOfDay
-						&& Session3Count < MaxTradesPerSession) {
-							 enableDisableStrat(true);
-					}
-					else if (Time_4 == true 
-						&& Times[0][0].TimeOfDay >= Start_Time_4.TimeOfDay
-		                 && Times[0][0].TimeOfDay <= Stop_Time_4.TimeOfDay
-						&& Session4Count < MaxTradesPerSession) {
-							enableDisableStrat(true);
-					} else {
-						enableDisableStrat(false);
-					}
-				}
-			}
-		}
+
 		
 		private void enableDisableStrat(bool isEnabled) {
 			if (State == State.Realtime) {
@@ -919,6 +938,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		protected virtual void calculateStopLossPriceLong(double price, bool isRunner) {
 			if (isCustomStopSet() == false) {
 				if (stopLossType == CommonEnums.StopLossType.ATR) {
+					//previousPrice = StopLoss_ATR.TrailingStopLow[0];
 					//SetStopLoss(entryLongString1, CalculationMode.Price, StopLoss_ATR.TrailingStopLow[0], false);
 					Print("Setting ATR StopLoss Long "+StopLoss_ATR.TrailingStopLow[0]);
 					if (isRunner == false)
@@ -929,6 +949,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					//	Print("Put StopLoss 2 ATR Long");
 					} 
 				} else if (stopLossType == CommonEnums.StopLossType.Fixed){
+				//	previousPrice = price - InitialStopLong*TickSize;
 					Print("Setting Fixed StopLoss Long "+(price - InitialStopLong*TickSize));
 					//SetStopLoss(entryLongString1, CalculationMode.Ticks, InitialStopLong, false);
 					if (isRunner == false) 
@@ -942,6 +963,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				}
 			} else {
 				double stopLossLong = customStopLong();
+				//previousPrice = stopLossLong;
 				Print ("Setting Custom Stop Loss Long");
 				
 				if (isRunner == false)
@@ -959,6 +981,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			if (isCustomStopSet() == false) {
 				if (stopLossType == CommonEnums.StopLossType.ATR) {
 					Print("Setting ATR StopLoss Short "+StopLoss_ATR.TrailingStopHigh[0]);
+				//	previousPrice = StopLoss_ATR.TrailingStopHigh[0];
 					//SetStopLoss(entryShortString1, CalculationMode.Price, StopLoss_ATR.TrailingStopHigh[0], false);
 					if (isRunner == false)
 						ExitShortStopMarket(0, true, PositionSize, StopLoss_ATR.TrailingStopHigh[0], "Stop " + entryShortString1, entryShortString1);
@@ -971,6 +994,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					}
 				} else {
 					Print("Setting Fixed StopLoss Short "+(price + InitialStopLong*TickSize));
+				//	previousPrice = price + InitialStopShort*TickSize;
 					//SetStopLoss(entryShortString1, CalculationMode.Ticks, InitialStopShort, false);
 					if (isRunner == false)
 						ExitShortStopMarket(0, true, PositionSize, (price + InitialStopShort*TickSize), "Stop " + entryShortString1, entryShortString1);
@@ -984,7 +1008,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			} else {
 				double stopLossShort = customStopShort();
 				Print ("Setting Custom Stop Loss Short");
-				
+			//	previousPrice = stopLossShort;
 				if (isRunner == false)
 						ExitShortStopMarket(0, true, PositionSize, stopLossShort, "Stop " + entryShortString1, entryShortString1);
 					else {
@@ -1130,8 +1154,9 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 							if (trailStopType == CommonEnums.TrailStopType.TickTrail) {
 								newPrice = previousPrice + TrailStepTicks * TickSize; // Calculate trail stop adjustment
 							} else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
-								//newPrice =  (previousPrice < TrailStop_ATR.TrailingStopLow[0]) ? TrailStop_ATR.TrailingStopLow[0] : previousPrice;
-								newPrice =  TrailStop_ATR.TrailingStopLow[0];
+								newPrice =  (previousPrice < TrailStop_ATR.TrailingStopLow[0]) ? TrailStop_ATR.TrailingStopLow[0] : previousPrice;
+								//newPrice =  TrailStop_ATR.TrailingStopLow[0];
+							
 							} else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice < Low[TrailByBars]) {
 								newPrice = Low[TrailByBars];
 							}
@@ -1154,8 +1179,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 							if (trailStopType == CommonEnums.TrailStopType.TickTrail) {
 								newPrice = previousPrice + TrailStepTicks * TickSize; // Calculate trail stop adjustment
 							} else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
-								//newPrice = (previousPrice < TrailStop_ATR.TrailingStopLow[0]) ? TrailStop_ATR.TrailingStopLow[0] : previousPrice;
-								newPrice =  TrailStop_ATR.TrailingStopLow[0];
+								newPrice = (previousPrice < TrailStop_ATR.TrailingStopLow[0]) ? TrailStop_ATR.TrailingStopLow[0] : previousPrice;
+								//newPrice =  TrailStop_ATR.TrailingStopLow[0];
 							} 	// Calculate trail stop adjustment
 							else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice < Low[TrailByBars]) {
 								newPrice = Low[TrailByBars];
@@ -1177,7 +1202,6 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					
 					
                 case MarketPosition.Short:
-					
 					if (previousPrice == 0) 
 					{
 						stopPlot = Position.AveragePrice + InitialStopShort * TickSize;  // initial stop plot level
@@ -1187,6 +1211,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
                     // Once the price is Less than entry price - breakEvenTicks ticks, set stop loss to breakeven
 	                    if (Close[0] < Position.AveragePrice - BreakevenTicks * TickSize && previousPrice == 0)
 	                    {
+							
 							initialBreakEven = Position.AveragePrice - PlusBreakeven * TickSize;
 	                       // SetStopLoss(entryShortString1, CalculationMode.Price, initialBreakEven, false);
 							ExitShortStopMarket(0, true, PositionSize, initialBreakEven, "Stop " + entryShortString1, entryShortString1);
@@ -1205,8 +1230,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 							if (trailStopType == CommonEnums.TrailStopType.TickTrail) {
 								newPrice = previousPrice - TrailStepTicks * TickSize;
 							} else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
-								//newPrice = (previousPrice > TrailStop_ATR.TrailingStopHigh[0]) ? TrailStop_ATR.TrailingStopHigh[0] : previousPrice;
-								newPrice = TrailStop_ATR.TrailingStopHigh[0];
+								newPrice = (previousPrice > TrailStop_ATR.TrailingStopHigh[0]) ? TrailStop_ATR.TrailingStopHigh[0] : previousPrice;
+								//newPrice = TrailStop_ATR.TrailingStopHigh[0];
 							} else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice > High[TrailByBars]) {
 								newPrice = High[TrailByBars];
 							}
@@ -1230,7 +1255,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 									newPrice = previousPrice - TrailStepTicks * TickSize;
 								}  else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
 									newPrice = (previousPrice > TrailStop_ATR.TrailingStopHigh[0]) ? TrailStop_ATR.TrailingStopHigh[0] : previousPrice;
-									newPrice = TrailStop_ATR.TrailingStopHigh[0];
+									//newPrice = TrailStop_ATR.TrailingStopHigh[0];
 								} else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice > High[TrailByBars]) {
 									newPrice = High[TrailByBars];
 								}
@@ -1259,12 +1284,13 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
             //Add your custom strategy logic here.
             if (CurrentBar < BarsRequiredToTrade)
                 return;
-			
+			regionColor();
 
             if (IsStratEnabled == true && (Position.MarketPosition == MarketPosition.Flat)
 				&& (orderState == CommonEnums.OrderState.BOTH || orderState == CommonEnums.OrderState.LONGS) 
                 && validateEntryLong()
 				&& validateTimeControlsAndTradeCount()
+			//	&& validateFiltersLong()
                 && ((BarsSinceEntryExecution(0, "", 0) == -1)
 					 || (BarsSinceEntryExecution(0, "", 0) > 1))) {
                 
@@ -1289,13 +1315,13 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 						}
 					}
 				}
-				incrementSessionTradeCount();
             }
 
             if (IsStratEnabled == true && (Position.MarketPosition == MarketPosition.Flat)
 				&& (orderState == CommonEnums.OrderState.BOTH || orderState == CommonEnums.OrderState.SHORTS) 
                 && validateEntryShort()
 				&& validateTimeControlsAndTradeCount()
+			//	&&  validateFiltersShort()
                 && ((BarsSinceEntryExecution(0, "", 0) == -1)
 					 || (BarsSinceEntryExecution(0, "", 0) > 1))) {
 				if (orderType == CommonEnums.OrderType.MARKET) {
@@ -1316,17 +1342,15 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 						}
 					}
 				}
-				incrementSessionTradeCount();
 
             }
 
 			calculateTrailStopAndBE();
-			validateMaxTradesPerSession();
 			validateStrategyPnl();	
 			resetSessionTradeCount();
 			
 			if (Position.MarketPosition == MarketPosition.Long) {
-				if (validateExitLong() == true) {
+				if ((enableExitByBarsSinceEntry == true && BarsSinceEntryExecution(0, entryLongString1, 0) == BarsSinceEntry) || validateExitLong() == true) {
 					ExitLong("Exit "+entryLongString1, entryLongString1);
 					if (enableRunner == true) {
 						ExitLong("Exit "+entryLongString2, entryLongString2);
@@ -1335,7 +1359,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			}
 			
 			if (Position.MarketPosition == MarketPosition.Short) {
-				if (validateExitShort() == true) {
+				if ((enableExitByBarsSinceEntry == true && BarsSinceEntryExecution(0, entryShortString1, 0) == BarsSinceEntry) || validateExitShort() == true) {
 					ExitLong("Exit "+entryShortString1, entryShortString1);
 					if (enableRunner == true) {
 						ExitLong("Exit "+entryShortString2, entryShortString2);
@@ -1420,6 +1444,12 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			}
 		}
 		
+		private void ModifyBarsSinceEntryProperties(PropertyDescriptorCollection col) {
+			if (showBarsSinceEntryOptions == false) {
+				col.Remove(col.Find("BarsSinceEntry", true));
+			} 
+		}
+		
 		#endregion
 		
 		#region ICustomTypeDescriptor Members
@@ -1483,6 +1513,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			ModifyTrailStopTypeProperties(col);
 			ModifyStopLossTypeProperties(col);
 			ModifyProfitTargetTypeProperties(col);
+			ModifyBarsSinceEntryProperties(col);
             return col;
 
         }
@@ -1553,14 +1584,34 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			
 			textLine2  = "Session Number: " + SessionNumber;
 			
-			if (SessionNumber == 1)
-				textLine3 = "Trades in this Session: " + Session1Count;
-			if (SessionNumber == 2)
-				textLine3 = "Trades in this Session: " + Session2Count;
-			if (SessionNumber == 3)
-				textLine3 = "Trades in this Session: " + Session3Count;
-			if (SessionNumber == 4)
-				textLine3 = "Trades in this Session: " + Session4Count;
+			if (SessionNumber == 1) {
+				if (Session1Count == MaxTradesPerSession) {
+					textLine3 = "Achieved Max trades per session in "+SessionNumber;
+				} else {
+					textLine3 = "Trades in this Session: " + Session1Count;
+				}
+			}
+			if (SessionNumber == 2) {
+				if (Session2Count == MaxTradesPerSession) {
+					textLine3 = "Achieved Max trades per session in "+SessionNumber;
+				} else {
+					textLine3 = "Trades in this Session: " + Session2Count;
+				}
+			}
+			if (SessionNumber == 3) {
+				if (Session3Count == MaxTradesPerSession) {
+					textLine3 = "Achieved Max trades per session in "+SessionNumber;
+				} else {
+					textLine3 = "Trades in this Session: " + Session3Count;
+				}
+			}
+			if (SessionNumber == 4) {
+				if (Session4Count == MaxTradesPerSession) {
+					textLine3 = "Achieved Max trades per session in "+SessionNumber;
+				} else {
+					textLine3 = "Trades in this Session: " + Session4Count;
+				}
+			}
 			
 			string realTimeTradeText = textLine0 + "\n" + textLine1 + "\n" + textLine2 + "\n" + textLine3 + "\n" + textLine4;
 			SimpleFont font = new SimpleFont("Courier New", 12) { Size = 15, Bold = true };
@@ -1572,15 +1623,12 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		protected override void OnRender(ChartControl chartControl, ChartScale chartScale)
 		{
 			base.OnRender(chartControl, chartScale);
-			//if (hasRanOnceFirstCycle)
-			//{
 			if (DisplayStrategyPnL == true) {
 				DrawStrategyPnl(chartControl);
 			}
 			if (DisplayHistoricalTradePerformance == true) {
 				DrawHistoricalTradePerformance(chartControl);
 			}
-		//	}
 		}
 		#endregion
 
@@ -1625,6 +1673,10 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 						//	jumpToProfitSet = true;
 					}
 			}
+			
+			if (execution.Order.OrderState == OrderState.Filled && (execution.Order.Name == entryLongString1 ||  execution.Order.Name == entryShortString1)) {
+					incrementSessionTradeCount();
+			}
 		}
 		#endregion
 		
@@ -1654,8 +1706,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		[Display(Name="Disclaimer", Order=4, GroupName="0. Strategy Information")]
 		public string Disclaimer
 		{ get; set; }
-		
-
+	
         [NinjaScriptProperty]
 		[Range(1, int.MaxValue)]
 		[Display(Name="PositionSize", Order=1, GroupName="2. Order Params")]
@@ -1714,6 +1765,9 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				} else if (stopLossType == CommonEnums.StopLossType.ATR) {
 					showFixedStopLossOptions = false;
 					showATRStopLossOptions = true;
+				} else if (stopLossType == CommonEnums.StopLossType.Custom) {
+					showFixedStopLossOptions = false;
+					showATRStopLossOptions = false;
 				}
 			}
 		}
@@ -1737,7 +1791,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		{ get; set; }
 
 		[NinjaScriptProperty]
-		[Range(1, double.MaxValue)]
+		[Range(0.1, double.MaxValue)]
 		[Display(Name="StopLoss_ATR_Mult", Order=5, GroupName="2.1 Order Params - Stop Loss")]
 		public double StopLoss_ATR_Mult
 		{ get; set; }
@@ -1757,6 +1811,9 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				} else if (profitTargetType == CommonEnums.ProfitTargetType.ATR) {
 					showFixedProfitTargetOptions = false;
 					showATRProfitTargetOptions = true;
+				} else if (profitTargetType == CommonEnums.ProfitTargetType.Custom) {
+					showFixedProfitTargetOptions = false;
+					showATRProfitTargetOptions = false;
 				}
 			}
 		}
@@ -1780,7 +1837,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		{ get; set; }
 
 		[NinjaScriptProperty]
-		[Range(1, double.MaxValue)]
+		[Range(0.1, double.MaxValue)]
 		[Display(Name="ProfitTarget_ATR_Mult", Order=5, GroupName="2.2 Order Params - Profit Target")]
 		public double ProfitTarget_ATR_Mult
 		{ get; set; }
@@ -1858,7 +1915,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		{ get; set; }
 		
 		[NinjaScriptProperty]
-        [Range(1, 5)]
+        [Range(0, 5)]
 		[Display(Name="TrailByBars", Order=7, GroupName="2.3 Order Params - Trail")]
 		public int TrailByBars
 		{ get; set; }
@@ -1938,6 +1995,32 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		{ get; set; }
 		
 		[NinjaScriptProperty]
+		[Display(Name="EnableExitByBarsSinceEntry", Order=1, GroupName="2.6 Order Params - Exit Management")]
+		[RefreshProperties(RefreshProperties.All)]
+		public bool EnableExitByBarsSinceEntry
+		{
+			get{
+				return enableExitByBarsSinceEntry;
+			} 
+			set {
+				enableExitByBarsSinceEntry = value;
+				
+				if (enableExitByBarsSinceEntry == true) {
+					showBarsSinceEntryOptions = true;
+				} else {
+					showBarsSinceEntryOptions = false;
+				}
+			}
+		}
+		
+		[NinjaScriptProperty]
+		[Range(1, int.MaxValue)]
+		[Display(Name="BarsSinceEntry", Order=2, GroupName="2.6 Order Params - Exit Management")]
+		public int BarsSinceEntry
+		{ get; set; }
+		
+			
+		[NinjaScriptProperty]
         [Display(Name = "Time_1", Order = 1, GroupName = "3. Time Controls")]
         public bool Time_1
         { 
@@ -1955,9 +2038,25 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
         [Display(Name = "Stop_Time_1", Order = 3, GroupName = "3. Time Controls")]
         public DateTime Stop_Time_1
         { get; set; }
+		
+		[XmlIgnore()]
+		[NinjaScriptProperty]		
+		[Display(Name = "Time1Color", Description = "Time1 background color", GroupName = "3. Time Controls", Order = 4)]
+        public Brush Time1Color
+        {
+            get { return time1Color; }
+            set { time1Color = value; }
+        }
+		[Browsable(false)]
+		public string Time1ColorSerialize
+		{
+			get { return Serialize.BrushToString(Time1Color); }
+			set { Time1Color = Serialize.StringToBrush(value); }
+		}
 
+		
         [NinjaScriptProperty]
-        [Display(Name = "Time_2", Order = 4, GroupName = "3. Time Controls")]
+        [Display(Name = "Time_2", Order = 5, GroupName = "3. Time Controls")]
         public bool Time_2
         { 
 			get;  set;
@@ -1965,18 +2064,33 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 
         [NinjaScriptProperty]
         [PropertyEditor("NinjaTrader.Gui.Tools.TimeEditorKey")]
-        [Display(Name = "Start_Time_2", Order = 5, GroupName = "3. Time Controls")]
+        [Display(Name = "Start_Time_2", Order = 6, GroupName = "3. Time Controls")]
         public DateTime Start_Time_2
         { get; set; }
 
         [NinjaScriptProperty]
         [PropertyEditor("NinjaTrader.Gui.Tools.TimeEditorKey")]
-        [Display(Name = "Stop_Time_2",  Order = 6, GroupName = "3. Time Controls")]
+        [Display(Name = "Stop_Time_2",  Order = 7, GroupName = "3. Time Controls")]
         public DateTime Stop_Time_2
         { get; set; }
+		
+		[XmlIgnore()]
+		[NinjaScriptProperty]		
+		[Display(Name = "Time2Color", Description = "Time2 background color", GroupName = "3. Time Controls", Order = 8)]
+        public Brush Time2Color
+        {
+            get { return time2Color; }
+            set { time2Color = value; }
+        }
+		[Browsable(false)]
+		public string Time2ColorSerialize
+		{
+			get { return Serialize.BrushToString(Time2Color); }
+			set { Time2Color = Serialize.StringToBrush(value); }
+		}
 
         [NinjaScriptProperty]
-        [Display(Name = "Time_3", Order = 7, GroupName = "3. Time Controls")]
+        [Display(Name = "Time_3", Order = 9, GroupName = "3. Time Controls")]
         public bool Time_3
         { 
 			get; set; 
@@ -1984,18 +2098,33 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 
         [NinjaScriptProperty]
         [PropertyEditor("NinjaTrader.Gui.Tools.TimeEditorKey")]
-        [Display(Name = "Start_Time_3", Order = 8, GroupName = "3. Time Controls")]
+        [Display(Name = "Start_Time_3", Order = 10, GroupName = "3. Time Controls")]
         public DateTime Start_Time_3
         { get; set; }
 
         [NinjaScriptProperty]
         [PropertyEditor("NinjaTrader.Gui.Tools.TimeEditorKey")]
-        [Display(Name = "Stop_Time_3", Order = 9, GroupName = "3. Time Controls")]
+        [Display(Name = "Stop_Time_3", Order = 11, GroupName = "3. Time Controls")]
         public DateTime Stop_Time_3
         { get; set; }
+		
+		[XmlIgnore()]
+		[NinjaScriptProperty]		
+		[Display(Name = "Time3Color", Description = "Time3 background color", GroupName = "3. Time Controls", Order = 12)]
+        public Brush Time3Color
+        {
+            get { return time3Color; }
+            set { time3Color = value; }
+        }
+		[Browsable(false)]
+		public string Time3ColorSerialize
+		{
+			get { return Serialize.BrushToString(Time3Color); }
+			set { Time3Color = Serialize.StringToBrush(value); }
+		}
 
         [NinjaScriptProperty]
-        [Display(Name = "Time_4", Order = 10, GroupName = "3. Time Controls")]
+        [Display(Name = "Time_4", Order = 13, GroupName = "3. Time Controls")]
         public bool Time_4
         { 
 			get; set;
@@ -2003,15 +2132,30 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 
         [NinjaScriptProperty]
         [PropertyEditor("NinjaTrader.Gui.Tools.TimeEditorKey")]
-        [Display(Name = "Start_Time_4", Order = 11, GroupName = "3. Time Controls")]
+        [Display(Name = "Start_Time_4", Order = 14, GroupName = "3. Time Controls")]
         public DateTime Start_Time_4
         { get; set; }
 
         [NinjaScriptProperty]
         [PropertyEditor("NinjaTrader.Gui.Tools.TimeEditorKey")]
-        [Display(Name = "Stop_Time_4", Order = 12, GroupName = "3. Time Controls")]
+        [Display(Name = "Stop_Time_4", Order = 15, GroupName = "3. Time Controls")]
         public DateTime Stop_Time_4
         { get; set; }
+		
+		[XmlIgnore()]
+		[NinjaScriptProperty]		
+		[Display(Name = "Time4Color", Description = "Time4 background color", GroupName = "3. Time Controls", Order = 16)]
+        public Brush Time4Color
+        {
+            get { return time4Color; }
+            set { time4Color = value; }
+        }
+		[Browsable(false)]
+		public string Time4ColorSerialize
+		{
+			get { return Serialize.BrushToString(Time4Color); }
+			set { Time4Color = Serialize.StringToBrush(value); }
+		}
 		
 		[NinjaScriptProperty]
 		[Range(1, int.MaxValue)]
@@ -2085,7 +2229,8 @@ namespace CommonEnums
 	public enum ProfitTargetType
 	{
 		Fixed,
-		ATR
+		ATR,
+		Custom
 	}
 	
 	public enum TrailStopType
@@ -2093,6 +2238,12 @@ namespace CommonEnums
 		TickTrail,
 		ATRTrail,
 		BarTrail
+	}
+	
+	public enum FilterType
+	{
+		VWAP,
+		EMA
 	}
 }
 
