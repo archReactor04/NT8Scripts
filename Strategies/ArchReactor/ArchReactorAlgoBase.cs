@@ -756,34 +756,28 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		
 		protected virtual void addDataSeries() {}
 		
-		protected bool isCustomStopSet() {
-			if (stopLossType == CommonEnums.StopLossType.Custom) {
-				return true;
-			}
+		protected virtual bool isCustomStopSet() {
 			return false;
 		}
 		
-		protected bool isCustomProfitSet() {
-			if (profitTargetType == CommonEnums.ProfitTargetType.Custom) {
-				return true;
-			}
+		protected virtual bool isCustomProfitSet() {
 			return false;
 		}
 		
 		protected virtual double customStopLong() {
-			return Low[0];
+			return -1;
 		}
 		
 		protected virtual double customStopShort() {
-			return High[0];
+			return -1;
 		}
 		
 		protected virtual double customProfitTargetLong(double price) {
-			return price + ProfitTargetLong*TickSize;
+			return -1;
 		}
 		
 		protected virtual double customProfitTargetShort(double price) {
-			return price - ProfitTargetShort*TickSize;
+			return -1;
 		}
 		
 		
@@ -938,7 +932,6 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		protected virtual void calculateStopLossPriceLong(double price, bool isRunner) {
 			if (isCustomStopSet() == false) {
 				if (stopLossType == CommonEnums.StopLossType.ATR) {
-					//previousPrice = StopLoss_ATR.TrailingStopLow[0];
 					//SetStopLoss(entryLongString1, CalculationMode.Price, StopLoss_ATR.TrailingStopLow[0], false);
 					Print("Setting ATR StopLoss Long "+StopLoss_ATR.TrailingStopLow[0]);
 					if (isRunner == false)
@@ -949,7 +942,6 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					//	Print("Put StopLoss 2 ATR Long");
 					} 
 				} else if (stopLossType == CommonEnums.StopLossType.Fixed){
-				//	previousPrice = price - InitialStopLong*TickSize;
 					Print("Setting Fixed StopLoss Long "+(price - InitialStopLong*TickSize));
 					//SetStopLoss(entryLongString1, CalculationMode.Ticks, InitialStopLong, false);
 					if (isRunner == false) 
@@ -963,7 +955,6 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				}
 			} else {
 				double stopLossLong = customStopLong();
-				//previousPrice = stopLossLong;
 				Print ("Setting Custom Stop Loss Long");
 				
 				if (isRunner == false)
@@ -981,7 +972,6 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			if (isCustomStopSet() == false) {
 				if (stopLossType == CommonEnums.StopLossType.ATR) {
 					Print("Setting ATR StopLoss Short "+StopLoss_ATR.TrailingStopHigh[0]);
-				//	previousPrice = StopLoss_ATR.TrailingStopHigh[0];
 					//SetStopLoss(entryShortString1, CalculationMode.Price, StopLoss_ATR.TrailingStopHigh[0], false);
 					if (isRunner == false)
 						ExitShortStopMarket(0, true, PositionSize, StopLoss_ATR.TrailingStopHigh[0], "Stop " + entryShortString1, entryShortString1);
@@ -994,7 +984,6 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					}
 				} else {
 					Print("Setting Fixed StopLoss Short "+(price + InitialStopLong*TickSize));
-				//	previousPrice = price + InitialStopShort*TickSize;
 					//SetStopLoss(entryShortString1, CalculationMode.Ticks, InitialStopShort, false);
 					if (isRunner == false)
 						ExitShortStopMarket(0, true, PositionSize, (price + InitialStopShort*TickSize), "Stop " + entryShortString1, entryShortString1);
@@ -1008,7 +997,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			} else {
 				double stopLossShort = customStopShort();
 				Print ("Setting Custom Stop Loss Short");
-			//	previousPrice = stopLossShort;
+				
 				if (isRunner == false)
 						ExitShortStopMarket(0, true, PositionSize, stopLossShort, "Stop " + entryShortString1, entryShortString1);
 					else {
@@ -1154,9 +1143,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 							if (trailStopType == CommonEnums.TrailStopType.TickTrail) {
 								newPrice = previousPrice + TrailStepTicks * TickSize; // Calculate trail stop adjustment
 							} else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
-								newPrice =  (previousPrice < TrailStop_ATR.TrailingStopLow[0]) ? TrailStop_ATR.TrailingStopLow[0] : previousPrice;
-								//newPrice =  TrailStop_ATR.TrailingStopLow[0];
-							
+								//newPrice =  (previousPrice < TrailStop_ATR.TrailingStopLow[0]) ? TrailStop_ATR.TrailingStopLow[0] : previousPrice;
+								newPrice =  TrailStop_ATR.TrailingStopLow[0];
 							} else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice < Low[TrailByBars]) {
 								newPrice = Low[TrailByBars];
 							}
@@ -1179,8 +1167,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 							if (trailStopType == CommonEnums.TrailStopType.TickTrail) {
 								newPrice = previousPrice + TrailStepTicks * TickSize; // Calculate trail stop adjustment
 							} else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
-								newPrice = (previousPrice < TrailStop_ATR.TrailingStopLow[0]) ? TrailStop_ATR.TrailingStopLow[0] : previousPrice;
-								//newPrice =  TrailStop_ATR.TrailingStopLow[0];
+								//newPrice = (previousPrice < TrailStop_ATR.TrailingStopLow[0]) ? TrailStop_ATR.TrailingStopLow[0] : previousPrice;
+								newPrice =  TrailStop_ATR.TrailingStopLow[0];
 							} 	// Calculate trail stop adjustment
 							else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice < Low[TrailByBars]) {
 								newPrice = Low[TrailByBars];
@@ -1202,6 +1190,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					
 					
                 case MarketPosition.Short:
+					
 					if (previousPrice == 0) 
 					{
 						stopPlot = Position.AveragePrice + InitialStopShort * TickSize;  // initial stop plot level
@@ -1211,7 +1200,6 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
                     // Once the price is Less than entry price - breakEvenTicks ticks, set stop loss to breakeven
 	                    if (Close[0] < Position.AveragePrice - BreakevenTicks * TickSize && previousPrice == 0)
 	                    {
-							
 							initialBreakEven = Position.AveragePrice - PlusBreakeven * TickSize;
 	                       // SetStopLoss(entryShortString1, CalculationMode.Price, initialBreakEven, false);
 							ExitShortStopMarket(0, true, PositionSize, initialBreakEven, "Stop " + entryShortString1, entryShortString1);
@@ -1230,8 +1218,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 							if (trailStopType == CommonEnums.TrailStopType.TickTrail) {
 								newPrice = previousPrice - TrailStepTicks * TickSize;
 							} else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
-								newPrice = (previousPrice > TrailStop_ATR.TrailingStopHigh[0]) ? TrailStop_ATR.TrailingStopHigh[0] : previousPrice;
-								//newPrice = TrailStop_ATR.TrailingStopHigh[0];
+								//newPrice = (previousPrice > TrailStop_ATR.TrailingStopHigh[0]) ? TrailStop_ATR.TrailingStopHigh[0] : previousPrice;
+								newPrice = TrailStop_ATR.TrailingStopHigh[0];
 							} else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice > High[TrailByBars]) {
 								newPrice = High[TrailByBars];
 							}
@@ -1255,7 +1243,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 									newPrice = previousPrice - TrailStepTicks * TickSize;
 								}  else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
 									newPrice = (previousPrice > TrailStop_ATR.TrailingStopHigh[0]) ? TrailStop_ATR.TrailingStopHigh[0] : previousPrice;
-									//newPrice = TrailStop_ATR.TrailingStopHigh[0];
+									newPrice = TrailStop_ATR.TrailingStopHigh[0];
 								} else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice > High[TrailByBars]) {
 									newPrice = High[TrailByBars];
 								}
@@ -1765,9 +1753,6 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				} else if (stopLossType == CommonEnums.StopLossType.ATR) {
 					showFixedStopLossOptions = false;
 					showATRStopLossOptions = true;
-				} else if (stopLossType == CommonEnums.StopLossType.Custom) {
-					showFixedStopLossOptions = false;
-					showATRStopLossOptions = false;
 				}
 			}
 		}
@@ -1811,9 +1796,6 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				} else if (profitTargetType == CommonEnums.ProfitTargetType.ATR) {
 					showFixedProfitTargetOptions = false;
 					showATRProfitTargetOptions = true;
-				} else if (profitTargetType == CommonEnums.ProfitTargetType.Custom) {
-					showFixedProfitTargetOptions = false;
-					showATRProfitTargetOptions = false;
 				}
 			}
 		}
