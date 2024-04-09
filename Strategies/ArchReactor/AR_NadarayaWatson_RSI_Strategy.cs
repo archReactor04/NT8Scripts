@@ -31,7 +31,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
         
         #region Variables
 			#region Strategy variables
-		//private NinjaTrader.NinjaScript.Indicators.RangeFilterSimple RangeFilterSimple1;
+		private NinjaTrader.NinjaScript.Indicators.VolBuySellMomentumV4VolMA VolBuySellMomentumV4VolMA1;
 		private NinjaTrader.NinjaScript.Indicators.NadarayaWatsonEnvelopeWithATRNonRepaint NadarayaWatsonEnvelopeWithATRNonRepaint1;
 		private NinjaTrader.NinjaScript.Indicators.RSI RSI1;
 		private NinjaTrader.NinjaScript.Indicators.ArchReactor.TOSignals TOSignals1;
@@ -157,17 +157,18 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				if (TradeOnConfirmationCandle == true) {
 					 if ((NadarayaWatsonEnvelopeWithATRNonRepaint1.Signal[1] == 1 || NadarayaWatsonEnvelopeWithATRNonRepaint1.Signal[1] == -1)
 						&& (Close[0] > High[1])
-						 && (RSI1.Avg[1] <= RSI_Low)
-						  && (IsRising(RSI1.Avg))
-							&& (Open[0] < Close[0])) {
+						 && (RSI1.Default[1] <= RSI_Low)
+							&& (Open[0] < Close[0]) 
+						// && VolBuySellMomentumV4VolMA1.PNVI_PEMA_Diff_Hist[0] > 0)
+						 ) {
 							Print("Entering Long Nadaraya Watson - RSI on Confirmation Candle");
 							return true;
 					}
 				} else {
 					if ((NadarayaWatsonEnvelopeWithATRNonRepaint1.Signal[0] == 1 || NadarayaWatsonEnvelopeWithATRNonRepaint1.Signal[0] == -1)
-						 && (RSI1.Avg[0] <= RSI_Low)
-						  && (IsRising(RSI1.Avg))
+						 && (RSI1.Default[0] <= RSI_Low)
 							&& (Open[0] < Close[0])) {
+						//&&  VolBuySellMomentumV4VolMA1.PNVI_PEMA_Diff_Hist[0] > 0) {
 								Print("Entering Long Nadaraya Watson - RSI");
 							return true;
 					}
@@ -187,8 +188,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
         }
 
         protected override bool validateEntryShort() {
-		//	int barsAgo = MRO(delegate { return RSI1.Default[0] >= RSI_High;}, 1, 10);
-			
+
 			if (TradeR3S3Reversal == true) {
 				if (validateCamarillaPivotsReversalShort() == true) {
 					Print("Entering Short Camarilla Reversal");
@@ -208,18 +208,20 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					
 		            if ((NadarayaWatsonEnvelopeWithATRNonRepaint1.Signal[1] == -1)
 						&& (Close[0] < Low[1])
-						 && (RSI1.Default[1] >= RSI_High)
-						  && IsFalling(RSI1.Avg)
+						 && (RSI1.Avg[1] >= RSI_High)
+						 // && IsFalling(RSI1.Default)
 							&& Open[0] > Close[0]) {
+						// && VolBuySellMomentumV4VolMA1.PNVI_PEMA_Diff_Hist[0] < 0) {
 								Print("Entering Short Nadaraya Watson - RSI on Confirmation Candle");
 								return true;
 					}
 				} else {
 					if ((NadarayaWatsonEnvelopeWithATRNonRepaint1.Signal[0] == -1)
-						 && (RSI1.Default[0] >= RSI_High)
+						 && (RSI1.Avg[0] >= RSI_High)
 						// && (barsAgo > 1 && barsAgo < 3)
-						  && IsFalling(RSI1.Avg)
+						  //&& IsFalling(RSI1.Default)
 							&& Open[0] > Close[0]) {
+						 //&& VolBuySellMomentumV4VolMA1.PNVI_PEMA_Diff_Hist[0] < 0) {
 								Print("Entering Short Nadaraya Watson - RSI");
 								return true;
 					}

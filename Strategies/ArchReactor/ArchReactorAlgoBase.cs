@@ -143,7 +143,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
                 case State.SetDefaults:
                     Description = @"ArchReactorAlgoBase";
                     Name = "ArchReactorAlgoBase";
-					BaseAlgoVersion								= "1.7";
+					BaseAlgoVersion								= "1.8";
 					StrategyVersion								= "1.0";
 					Author										= "archReactor";
 					Credits										= "archReactor";
@@ -755,31 +755,36 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		
 		
 		protected virtual void addDataSeries() {}
-		
-		protected virtual bool isCustomStopSet() {
+
+		protected bool isCustomStopSet() {
+			if (stopLossType == CommonEnums.StopLossType.Custom) {
+				return true;
+			}
 			return false;
 		}
 		
-		protected virtual bool isCustomProfitSet() {
+		protected bool isCustomProfitSet() {
+			if (profitTargetType == CommonEnums.ProfitTargetType.Custom) {
+				return true;
+			}
 			return false;
 		}
 		
 		protected virtual double customStopLong() {
-			return -1;
+			return Low[0];
 		}
 		
 		protected virtual double customStopShort() {
-			return -1;
+			return High[0];
 		}
 		
 		protected virtual double customProfitTargetLong(double price) {
-			return -1;
+			return price + ProfitTargetLong*TickSize;
 		}
 		
 		protected virtual double customProfitTargetShort(double price) {
-			return -1;
+			return price - ProfitTargetShort*TickSize;
 		}
-		
 		
 		protected bool validateTimeControlsAndTradeCount() {
 			
@@ -1143,8 +1148,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 							if (trailStopType == CommonEnums.TrailStopType.TickTrail) {
 								newPrice = previousPrice + TrailStepTicks * TickSize; // Calculate trail stop adjustment
 							} else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
-								//newPrice =  (previousPrice < TrailStop_ATR.TrailingStopLow[0]) ? TrailStop_ATR.TrailingStopLow[0] : previousPrice;
-								newPrice =  TrailStop_ATR.TrailingStopLow[0];
+								newPrice =  (previousPrice < TrailStop_ATR.TrailingStopLow[0]) ? TrailStop_ATR.TrailingStopLow[0] : previousPrice;
+								//newPrice =  TrailStop_ATR.TrailingStopLow[0];
 							} else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice < Low[TrailByBars]) {
 								newPrice = Low[TrailByBars];
 							}
@@ -1167,8 +1172,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 							if (trailStopType == CommonEnums.TrailStopType.TickTrail) {
 								newPrice = previousPrice + TrailStepTicks * TickSize; // Calculate trail stop adjustment
 							} else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
-								//newPrice = (previousPrice < TrailStop_ATR.TrailingStopLow[0]) ? TrailStop_ATR.TrailingStopLow[0] : previousPrice;
-								newPrice =  TrailStop_ATR.TrailingStopLow[0];
+								newPrice = (previousPrice < TrailStop_ATR.TrailingStopLow[0]) ? TrailStop_ATR.TrailingStopLow[0] : previousPrice;
+								//newPrice =  TrailStop_ATR.TrailingStopLow[0];
 							} 	// Calculate trail stop adjustment
 							else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice < Low[TrailByBars]) {
 								newPrice = Low[TrailByBars];
@@ -1218,8 +1223,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 							if (trailStopType == CommonEnums.TrailStopType.TickTrail) {
 								newPrice = previousPrice - TrailStepTicks * TickSize;
 							} else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
-								//newPrice = (previousPrice > TrailStop_ATR.TrailingStopHigh[0]) ? TrailStop_ATR.TrailingStopHigh[0] : previousPrice;
-								newPrice = TrailStop_ATR.TrailingStopHigh[0];
+								newPrice = (previousPrice > TrailStop_ATR.TrailingStopHigh[0]) ? TrailStop_ATR.TrailingStopHigh[0] : previousPrice;
+								//newPrice = TrailStop_ATR.TrailingStopHigh[0];
 							} else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice > High[TrailByBars]) {
 								newPrice = High[TrailByBars];
 							}
@@ -1243,7 +1248,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 									newPrice = previousPrice - TrailStepTicks * TickSize;
 								}  else if (trailStopType == CommonEnums.TrailStopType.ATRTrail) {
 									newPrice = (previousPrice > TrailStop_ATR.TrailingStopHigh[0]) ? TrailStop_ATR.TrailingStopHigh[0] : previousPrice;
-									newPrice = TrailStop_ATR.TrailingStopHigh[0];
+									//newPrice = TrailStop_ATR.TrailingStopHigh[0];
 								} else if (trailStopType == CommonEnums.TrailStopType.BarTrail && newPrice > High[TrailByBars]) {
 									newPrice = High[TrailByBars];
 								}
@@ -1337,7 +1342,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			validateStrategyPnl();	
 			resetSessionTradeCount();
 			
-			if (Position.MarketPosition == MarketPosition.Long) {
+			if (Position.MarketPosition == MarketPosition.Long) { 	
 				if ((enableExitByBarsSinceEntry == true && BarsSinceEntryExecution(0, entryLongString1, 0) == BarsSinceEntry) || validateExitLong() == true) {
 					ExitLong("Exit "+entryLongString1, entryLongString1);
 					if (enableRunner == true) {
@@ -1347,10 +1352,12 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 			}
 			
 			if (Position.MarketPosition == MarketPosition.Short) {
+				Print("BarsSinceEntryExecution(0, entryShortString1, 0)" + BarsSinceEntryExecution(0, entryShortString1, 0));
 				if ((enableExitByBarsSinceEntry == true && BarsSinceEntryExecution(0, entryShortString1, 0) == BarsSinceEntry) || validateExitShort() == true) {
-					ExitLong("Exit "+entryShortString1, entryShortString1);
+					Print("Should exit by bars");
+					ExitShort("Exit "+entryShortString1, entryShortString1);
 					if (enableRunner == true) {
-						ExitLong("Exit "+entryShortString2, entryShortString2);
+						ExitShort("Exit "+entryShortString2, entryShortString2);
 					}
 				}
 			}
@@ -1754,6 +1761,10 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					showFixedStopLossOptions = false;
 					showATRStopLossOptions = true;
 				}
+				else if (stopLossType == CommonEnums.StopLossType.Custom) {
+					showFixedStopLossOptions = false;
+					showATRStopLossOptions = false;
+				}
 			}
 		}
 
@@ -1796,6 +1807,9 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				} else if (profitTargetType == CommonEnums.ProfitTargetType.ATR) {
 					showFixedProfitTargetOptions = false;
 					showATRProfitTargetOptions = true;
+				} else if (profitTargetType == CommonEnums.ProfitTargetType.Custom) {
+					showFixedProfitTargetOptions = false;
+					showATRProfitTargetOptions = false;
 				}
 			}
 		}
